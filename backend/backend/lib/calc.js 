@@ -1,0 +1,17 @@
+'use strict';
+function generarFolio(){
+  const letras = Array.from({length:4}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random()*26)]).join('');
+  const d = new Date(); const pad = (n,z=2)=>String(n).padStart(z,'0');
+  return `LIM-${letras}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${pad(d.getMilliseconds(),3)}`;
+}
+function calcularSistema(entradas, forcedMode='auto'){
+  const Focos = Number(entradas.Focos || 0);
+  const PotFoco = Number(entradas.PotFoco_W || 9);
+  const Contactos = Number(entradas.Contactos || 0);
+  const VA_instalada_total = Focos * PotFoco + Contactos * 180;
+  return { Focos, PotFoco_W: PotFoco, Contactos, VA_instalada_total, VA_demanda_total: VA_instalada_total, sistema: 'Monofásico' };
+}
+function resumenLevantamiento(folio, entradas, c){
+  return `Folio: ${folio}\nFocos: ${entradas.Focos||0}\nContactos: ${entradas.Contactos||0}\nDemanda: ${c.VA_demanda_total} VA\nSistema: ${c.sistema}`;
+}
+module.exports = { generarFolio, calcularSistema, resumenLevantamiento };
