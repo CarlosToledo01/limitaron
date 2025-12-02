@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>LIMATRON 🍋</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root {
+      --bg:#0f172a;
+      --card:#111827;
+      --muted:#64748b;
+      --fg:#e2e8f0;
+      --acc:#22c55e;
+      --border:#1e293b;
+      --pill:#1e293b;
+      --danger:#dc2626;
+      --warn:#f59e0b;
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--fg);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    .wrap { max-width:1280px; margin:2rem auto; padding:0 1.25rem;}
+    h1 {
+      margin:0 0 1.6rem;
+      font-weight:700;
+      font-size:clamp(2rem,5vw,3rem);
+      letter-spacing:.5px;
+      display:flex;
+      align-items:center;
+      gap:.6rem;
+    }
+    h1 .emoji { font-size:clamp(2rem,5vw,3rem); line-height:1; }
+
+    .grid-main { display:grid; grid-template-columns:470px 1fr; gap:1.5rem;}
+    @media (max-width:980px){ .grid-main{grid-template-columns:1fr;} }
+
+    .card {
+      background:var(--card);
+      border:1px solid var(--border);
+      padding:1.25rem 1.25rem 1.4rem;
+      border-radius:1.1rem;
+    }
+
+    /* ---------- Form layout ---------- */
+    form#calcForm { display:flex; flex-direction:column; gap:1.25rem; }
+    .section { display:flex; flex-direction:column; gap:.9rem; }
+    .section h3 {
+      margin:0;
+      font-size:1rem;
+      font-weight:700;
+      color:#cbd5e1;
+      letter-spacing:.5px;
+    }
+    .field-row {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(0,1fr));
+      gap:.75rem;
+      width:100%;
+    }
+    .field { display:flex; flex-direction:column; gap:.4rem; width:100%; }
+    label {
+      font-size:.68rem;
+      font-weight:600;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color:#94a3b8;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin:0;
+    }
+    input, select {
+      width:100%;
+      padding:.85rem .95rem;
+      border-radius:.8rem;
+      border:1px solid #1d2533;
+      background:#0b1324;
+      color:var(--fg);
+      font-size:.9rem;
+      font-weight:500;
+      outline:none;
+      transition:border-color .15s, background .15s;
+      min-height:44px; /* accesible/touch-friendly */
+    }
+    input:focus, select:focus { border-color:#3b82f6; background:#132033; }
+
+    /* Acciones */
+    .actions { display:flex; flex-direction:column; gap:.75rem; margin-top:.25rem;}
+    .actions .row { display:flex; gap:.65rem; flex-wrap:wrap; }
+    button {
+      background:var(--acc);
+      border:none;
+      color:#064e3b;
+      font-weight:700;
+      padding:.75rem 1.1rem;
+      border-radius:.75rem;
+      cursor:pointer;
+      font-size:.95rem;
+      letter-spacing:.5px;
+      min-height:44px; /* accesible/touch-friendly */
+    }
+    button.secondary { background:#1e2533; color:#e2e8f0; }
+    button.small { padding:.5rem .8rem; font-size:.78rem; }
+    button:disabled { opacity:.55; cursor:not-allowed;}
+
+    /* Tabs & panels */
+    .tabs { display:flex; gap:.4rem; border-bottom:1px solid var(--border); margin-bottom:.95rem; flex-wrap:wrap; }
+    .tab {
+      background:#0b1324;
+      border:1px solid var(--border);
+      border-bottom:none;
+      color:#cbd5e1;
+      padding:.6rem .9rem;
+      border-top-left-radius:.8rem;
+      border-top-right-radius:.8rem;
+      cursor:pointer;
+      font-weight:600;
+      font-size:.78rem;
+      letter-spacing:.05em;
+      opacity:.85;
+      transition:background .15s;
+    }
+    .tab.active { background:var(--card); color:#fff; opacity:1; }
+    .tab-panel { display:none; animation:fade .18s ease-in; }
+    .tab-panel.active { display:block; }
+    @keyframes fade { from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+    table { width:100%; border-collapse:collapse; font-size:.78rem; }
+    th,td { padding:.5rem .55rem; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle;}
+    th { color:#94a3b8; font-weight:600; letter-spacing:.05em; }
+
+    pre {
+      background:#0b1220;
+      padding:1rem 1.1rem;
+      border-radius:.75rem;
+      font-size:.78rem;
+      line-height:1.15rem;
+      overflow:auto;
+      white-space:pre-wrap;
+    }
+
+    .panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:.6rem;}
+    .pill { background:var(--pill); padding:.35rem .75rem; border-radius:1.2rem; font-size:.6rem; font-weight:700; letter-spacing:.05em;}
+    .ok{color:#22c55e;} .error{color:var(--danger);} .warn{color:var(--warn);}
+    .muted { color:#94a3b8; font-size:.8rem;}
+
+    /* ---------- Unifilar (SVG) ---------- */
+    .sld-wrap {
+      background:#ffffff;
+      border:1px solid #d1d5db;
+      padding:.9rem;
+      border-radius:.8rem;
+      overflow:auto;                 /* permite desplazamiento en móvil */
+      -webkit-overflow-scrolling:touch;
+      touch-action: pan-x pan-y;     /* gestos nativos de desplazamiento */
+    }
+    /* Hacemos responsivo el SVG sin importar atributos width/height del propio SVG */
+    .sld-wrap svg { width:100% !important; height:auto !important; display:block; }
+
+    .toolbar { display:flex; gap:.6rem; flex-wrap:wrap; margin:.6rem 0 .85rem; }
+    .toolbar button { background:#1e2533; color:#e2e8f0; }
+
+    /* ---------- Ajustes móviles ---------- */
+    @media (max-width:640px){
+      .wrap { padding:0 .8rem; }
+      h1 { font-size:clamp(1.6rem,7vw,2.2rem); }
+      .actions .row { flex-direction:column; }
+      .actions .row > * { width:100%; }
+      .tabs { position:sticky; top:0; z-index:10; background:var(--card); padding-top:.3rem; }
+      .toolbar { position:sticky; top:46px; z-index:9; background:var(--card); padding:.4rem 0; }
+      table { font-size:.76rem; }
+    }
+
+    /* Scroll appearance */
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-track { background:#0b1324; }
+    ::-webkit-scrollbar-thumb { background:#1f2b3a; border-radius:6px; }
+    ::-webkit-scrollbar-thumb:hover { background:#304256; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1><span>LIMATRON</span><span class="emoji">🍋</span></h1>
+
+    <div class="grid-main">
+      <!-- ENTRADA -->
+      <div class="card">
+        <form id="calcForm" onsubmit="return false;">
+          <!-- Cargas generales -->
+          <div class="section">
+            <h3>Cargas generales</h3>
+            <div class="field-row">
+              <div class="field">
+                <label>Focos</label>
+                <input name="Focos" type="number" value="12" min="0" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>Potencia foco (W)</label>
+                <input name="PotFoco_W" type="number" value="9" min="1" inputmode="numeric">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Contactos</label>
+                <input name="Contactos" type="number" value="6" min="0" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>Contactos especiales</label>
+                <input name="ContactosEspeciales" type="number" value="0" min="0" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+
+          <!-- Cargas especiales -->
+          <div class="section">
+            <h3>Cargas especiales</h3>
+            <div class="field-row">
+              <div class="field">
+                <label>Bombas (unidades)</label>
+                <input name="Bombas" type="number" value="0" min="0" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>HP Bombas (lista)</label>
+                <input name="Bombas_HP_List" type="text" placeholder="1, 0.5">
+              </div>
+            </div>
+          </div>
+
+          <!-- Parámetros -->
+          <div class="section">
+            <h3>Parámetros del sistema</h3>
+            <div class="field-row">
+              <div class="field">
+                <label>Longitud alimentador (m)</label>
+                <input name="largo_alim_m" type="number" value="18" min="0" step=".1" inputmode="decimal">
+              </div>
+              <div class="field">
+                <label>Modo</label>
+                <select name="forcedMode">
+                  <option value="auto">Auto</option>
+                  <option value="mono">Monofásico</option>
+                  <option value="bifa">Bifásico</option>
+                  <option value="trifa">Trifásico</option>
+                </select>
+              </div>
+            </div>
+            <div class="muted">Longitudes individuales se ajustan en “Propuesta”.</div>
+          </div>
+
+          <div class="actions">
+            <div class="row">
+              <button type="button" id="btnCalc">Calcular</button>
+              <button type="button" id="btnDemo" class="secondary">Demo rápida</button>
+            </div>
+            <div class="row">
+              <button type="button" id="btnRecalc" class="secondary">Recalcular con longitudes</button>
+              <button type="button" id="btnCopy" class="secondary">Copiar resumen</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- RESULTADOS -->
+      <div class="card">
+        <div class="tabs" id="tabs">
+          <div class="tab active" data-tab="proposal">Propuesta</div>
+          <div class="tab" data-tab="balance">Balance</div>
+          <div class="tab" data-tab="resumen">Resumen</div>
+          <div class="tab" data-tab="estructurado">Estructurado</div>
+          <div class="tab" data-tab="unifilar">Unifilar</div>
+          <div class="pill" id="statusRight">—</div>
+        </div>
+
+        <!-- Propuesta -->
+        <div class="tab-panel active" id="panel-proposal">
+          <div class="panel-header">
+            <h3 style="margin:0;">Propuesta de circuitos</h3>
+            <span id="statusProp" class="pill">—</span>
+          </div>
+          <div id="proposal">Realiza un cálculo para ver la propuesta…</div>
+        </div>
+
+        <!-- Balance -->
+        <div class="tab-panel" id="panel-balance">
+          <div class="panel-header">
+            <h3 style="margin:0;">Balance de cargas</h3>
+            <span id="statusBalance" class="pill">—</span>
+          </div>
+          <div id="balanceSummary" class="muted">Se mostrará cuando proceda.</div>
+          <div id="balanceTableWrap" style="margin-top:.6rem; overflow:auto; display:none;">
+            <table id="balanceTable">
+              <thead><tr><th>#</th><th>Circuito</th><th>Tipo</th><th>VA</th><th>Fase</th></tr></thead>
+              <tbody id="balanceTBody"></tbody>
+            </table>
+            <div class="actions" style="margin-top:.75rem;">
+              <div class="row">
+                <button type="button" id="btnApplyBalance" class="secondary small" disabled>Aplicar manual</button>
+                <button type="button" id="btnAutoBalance" class="secondary small" disabled>Auto balance</button>
+              </div>
+            </div>
+            <div id="balanceNotice" class="muted" style="margin-top:.4rem;"></div>
+          </div>
+        </div>
+
+        <!-- Resumen -->
+        <div class="tab-panel" id="panel-resumen">
+          <div class="panel-header">
+            <h3 style="margin:0;">Resumen</h3>
+            <span id="statusCalc" class="pill">—</span>
+          </div>
+          <pre id="resumen">—</pre>
+        </div>
+
+        <!-- Estructurado -->
+        <div class="tab-panel" id="panel-estructurado">
+          <div class="panel-header">
+            <h3 style="margin:0;">Resumen estructurado</h3>
+            <span id="statusStruct" class="pill">—</span>
+          </div>
+          <div id="structured" class="muted">Se mostrará tras recalcular.</div>
+        </div>
+
+        <!-- Unifilar -->
+        <div class="tab-panel" id="panel-unifilar">
+          <div class="panel-header">
+            <h3 style="margin:0;">Diagrama unifilar (SVG)</h3>
+            <span id="statusSLD" class="pill">—</span>
+          </div>
+          <div class="toolbar">
+            <button type="button" id="btnGenSLD" class="secondary small">Regenerar</button>
+            <button type="button" id="btnFitWidth" class="secondary small">Ajustar al ancho</button>
+            <button type="button" id="btnDownloadSLD" class="secondary small" disabled>SVG</button>
+            <button type="button" id="btnDownloadSLDPNG" class="secondary small" disabled>PNG</button>
+          </div>
+          <div id="sldContainer" class="sld-wrap">—</div>
+          <div class="muted" style="margin-top:.6rem;">VD>3% se marca en rojo; desbalance >5% en ámbar.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generador SVG Unifilar -->
+  <script src="./sld.js"></script>
+
+  <script>
+    /* ===== Tabs ===== */
+    const tabsEl=document.getElementById('tabs');
+    const panels={
+      proposal:document.getElementById('panel-proposal'),
+      balance:document.getElementById('panel-balance'),
+      resumen:document.getElementById('panel-resumen'),
+      estructurado:document.getElementById('panel-estructurado'),
+      unifilar:document.getElementById('panel-unifilar')
+    };
+    function setActiveTab(id){
+      const t=tabsEl.querySelector(`.tab[data-tab="${id}"]`);
+      if(!t) return;
+      tabsEl.querySelectorAll('.tab').forEach(el=> el.classList.toggle('active', el===t));
+      Object.entries(panels).forEach(([k,p])=> p.classList.toggle('active', k===id));
+      if(id==='unifilar') maybeGenerateSLD();
+    }
+    tabsEl.addEventListener('click',e=>{
+      const t=e.target.closest('.tab');
+      if(t) setActiveTab(t.dataset.tab);
+    });
+
+    /* ===== Elementos ===== */
+    const form=document.getElementById('calcForm');
+    const btnCalc=document.getElementById('btnCalc');
+    const btnDemo=document.getElementById('btnDemo');
+    const btnRecalc=document.getElementById('btnRecalc');
+    const btnCopy=document.getElementById('btnCopy');
+    const btnApplyBalance=document.getElementById('btnApplyBalance');
+    const btnAutoBalance=document.getElementById('btnAutoBalance');
+
+    const statusRight=document.getElementById('statusRight');
+    const statusProp=document.getElementById('statusProp');
+    const statusBalance=document.getElementById('statusBalance');
+    const statusCalc=document.getElementById('statusCalc');
+    const statusStruct=document.getElementById('statusStruct');
+    const statusSLD=document.getElementById('statusSLD');
+
+    const proposalDiv=document.getElementById('proposal');
+    const balanceSummary=document.getElementById('balanceSummary');
+    const balanceTableWrap=document.getElementById('balanceTableWrap');
+    const balanceTBody=document.getElementById('balanceTBody');
+    const balanceNotice=document.getElementById('balanceNotice');
+    const resumenEl=document.getElementById('resumen');
+    const structuredDiv=document.getElementById('structured');
+    const sldContainer=document.getElementById('sldContainer');
+    const btnGenSLD=document.getElementById('btnGenSLD');
+    const btnFitWidth=document.getElementById('btnFitWidth');
+    const btnDownloadSLD=document.getElementById('btnDownloadSLD');
+    const btnDownloadSLDPNG=document.getElementById('btnDownloadSLDPNG');
+
+    const DEFAULT_L_DERIV=10;
+
+    /* ===== Helpers ===== */
+    const parseList=s=> (!s||!s.trim())?[]: s.split(',').map(x=>Number(String(x).trim().replace(',','.'))).filter(Number.isFinite);
+    function gatherBasePayload(){
+      const fd=new FormData(form);
+      return {
+        Focos:Number(fd.get('Focos')||0),
+        PotFoco_W:Number(fd.get('PotFoco_W')||9),
+        Contactos:Number(fd.get('Contactos')||0),
+        Bombas:Number(fd.get('Bombas')||0),
+        Bombas_HP_List:parseList(fd.get('Bombas_HP_List')),
+        ContactosEspeciales:Number(fd.get('ContactosEspeciales')||0),
+        largo_alim_m:Number(fd.get('largo_alim_m')||0),
+        forcedMode:fd.get('forcedMode') || 'auto'
+      };
+    }
+    function collectPerCircuitLengths(){
+      const inputs=document.querySelectorAll('#proposal input[name^="L_"]');
+      const L={focos:[],contactos:[],especiales:[],bombas:[]};
+      inputs.forEach(inp=>{
+        const m=inp.name.match(/^L_(focos|contactos|especiales|bombas)_(\d+)$/);
+        if(!m) return;
+        const key=m[1], idx=Number(m[2]);
+        L[key][idx]=Number(inp.value||0);
+      });
+      ['focos','contactos','especiales','bombas'].forEach(k=> L[k]=(L[k]||[]).map(v=>Number(v||0)));
+      return L;
+    }
+    function collectPhaseAssignments(){
+      const sys=window.__lastData?.sistema||{};
+      const assign=(sys.phase_balance && Array.isArray(sys.phase_balance.assignment))? sys.phase_balance.assignment:[];
+      return assign.map(row=>{
+        const sel=document.querySelector(`select[name="phase_${row.id}"]`);
+        const fase=Number(sel? sel.value: row.fase);
+        return { id:row.id, fase };
+      });
+    }
+    function calcDesb(totals){
+      const pos=(totals||[]).filter(v=>v>0);
+      if(!pos.length) return 0;
+      const max=Math.max(...pos), min=Math.min(...pos);
+      return max>0? ((max-min)/max)*100:0;
+    }
+    function previewTotals(assignments, sys){
+      const mapVA={};
+      (sys.phase_balance?.assignment||[]).forEach(a=> mapVA[a.id]=a.VA);
+      if(Object.keys(mapVA).length===0 && Array.isArray(sys.derived_proposal)){
+        sys.derived_proposal.forEach(ci=> mapVA[`${ci.key}_${ci.circuito_index}`]=ci.VA);
+      }
+      const phaseCount=sys.phaseCount || (sys.sistema==='Trifásico'?3:(sys.sistema==='Bifásico'?2:1));
+      const totals=Array.from({length:phaseCount},()=>0);
+      assignments.forEach(a=>{
+        const f=(a.fase>=1 && a.fase<=phaseCount)? a.fase:1;
+        totals[f-1]+=Number(mapVA[a.id]||0);
+      });
+      return totals;
+    }
+
+    /* ===== Core run ===== */
+    async function run(payload, opts={showSummary:false}){
+      statusRight.textContent='Procesando…'; statusRight.className='pill';
+      statusProp.textContent='—'; statusBalance.textContent='—';
+      statusCalc.textContent=opts.showSummary?'Calculando…':'Pendiente'; statusCalc.className='pill';
+      resumenEl.textContent= opts.showSummary? 'Calculando…':'Modifica longitudes y pulsa “Recalcular…”';
+      structuredDiv.textContent= opts.showSummary? 'Calculando…':'Se mostrará tras recalcular.';
+      structuredDiv.classList.add('muted');
+      statusStruct.textContent='—'; statusStruct.className='pill';
+      balanceSummary.textContent='Se mostrará cuando el sistema sea bifásico o trifásico.'; balanceSummary.classList.add('muted');
+      balanceTableWrap.style.display='none'; btnApplyBalance.disabled=true; btnAutoBalance.disabled=true; balanceNotice.textContent='';
+      statusSLD.textContent='—'; sldContainer.innerHTML='—'; btnDownloadSLD.disabled=true; btnDownloadSLDPNG.disabled=true;
+
+      try{
+        const res=await fetch('/api/v1/calculate',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data=await res.json();
+        window.__lastData=data;
+        if(!data.ok) throw new Error(data.error||'Error desconocido');
+
+        statusRight.textContent='OK'; statusRight.className='pill ok';
+        renderProposal(data.sistema||{}); renderBalance(data);
+
+        if(opts.showSummary){
+          statusCalc.textContent='OK'; statusCalc.className='pill ok';
+          resumenEl.textContent=data.resumen || 'OK';
+          renderStructured(data);
+          statusStruct.textContent='OK'; statusStruct.className='pill ok';
+        } else {
+          statusCalc.textContent='Pendiente'; statusCalc.className='pill'; btnRecalc.disabled=false;
+        }
+        if(panels.unifilar.classList.contains('active')) maybeGenerateSLD();
+        return data;
+      }catch(err){
+        statusRight.textContent='Error'; statusRight.className='pill error';
+        statusCalc.textContent='Error'; statusCalc.className='pill error';
+        proposalDiv.innerHTML='—'; resumenEl.textContent='Error: '+err.message;
+        structuredDiv.textContent='No disponible.';
+        statusSLD.textContent='Error'; statusSLD.className='pill error';
+        return null;
+      }
+    }
+
+    /* ===== Render propuesta ===== */
+    function renderProposal(s){
+      if(!s || !Array.isArray(s.derived_proposal) || !s.derived_proposal.length){
+        statusProp.textContent='—'; proposalDiv.innerHTML='No hay circuitos derivados.'; btnRecalc.disabled=true; return;
+      }
+      statusProp.textContent='OK'; statusProp.className='pill ok';
+      const rows=s.derived_proposal.map(ci=>{
+        const name=`L_${ci.key}_${ci.circuito_index}`;
+        const current=Number(ci.L_m ?? DEFAULT_L_DERIV);
+        const vdText=ci.vd_pct==null?'—':`${Number(ci.vd_pct).toFixed(2)} %`;
+        const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba')?'':` (${ci.items})`;
+        return `<tr>
+          <td>${ci.idx}</td>
+          <td>${ci.tipo}${itemsTxt}</td>
+          <td>${Math.round(ci.VA)} VA</td>
+          <td>${Number(ci.I).toFixed(2)} A</td>
+          <td>${ci.breaker||'—'} A / ${ci.cal||'—'}</td>
+          <td><input type="number" min="0" step=".1" value="${current}" style="width:90px" name="${name}" inputmode="decimal"></td>
+          <td>${vdText}</td>
+        </tr>`;
+      }).join('');
+      proposalDiv.innerHTML=
+        `<div style="overflow:auto;">
+          <table>
+            <thead><tr><th>#</th><th>Circuito</th><th>VA</th><th>I</th><th>Protección/Calibre</th><th>Longitud (m)</th><th>VD actual</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+        <div class="muted" style="margin-top:.4rem;">Ajusta longitudes y pulsa “Recalcular…”</div>`;
+    }
+
+    /* ===== Render balance ===== */
+    function renderBalance(data){
+      const s=data.sistema||{};
+      statusBalance.textContent='—'; statusBalance.className='pill';
+      balanceSummary.textContent='Balance no aplica.'; balanceSummary.classList.add('muted');
+      balanceTableWrap.style.display='none'; btnApplyBalance.disabled=true; btnAutoBalance.disabled=true; balanceNotice.textContent='';
+
+      if(!s.balanceEnabled || !s.phase_balance || (s.phaseCount||1)<=1) return;
+
+      const totals=s.phase_balance.totals||[];
+      const fasesTxt=totals.map((v,i)=>`F${i+1}: ${Math.round(v)} VA`).join(' • ');
+      const desb=s.phase_balance.desbalance_pct!=null? Number(s.phase_balance.desbalance_pct).toFixed(2):'—';
+      statusBalance.textContent='OK'; statusBalance.className='pill ok';
+      // Cambio solicitado: mostrar "(lim ≤ 5.00%)"
+      balanceSummary.textContent=`• ${fasesTxt} • Desbalance: ${desb}% (lim ≤ 5.00%)`;
+      balanceSummary.classList.remove('muted');
+
+      renderBalanceTableFromAssignments(s.phase_balance.assignment, s.phaseCount||2);
+      balanceTableWrap.style.display='block';
+      btnApplyBalance.disabled=false;
+      btnAutoBalance.disabled=false;
+
+      balanceTBody.querySelectorAll('select[name^="phase_"]').forEach(sel=>{
+        sel.addEventListener('change', onPhaseSelectChanged);
+      });
+    }
+    function renderBalanceTableFromAssignments(assignment, phaseCount){
+      const sorted=[...assignment].sort((a,b)=> (a.fase-b.fase)||((a.idx||0)-(b.idx||0)));
+      balanceTBody.innerHTML=sorted.map(row=>{
+        const opts=Array.from({length:phaseCount},(_,i)=> `<option value="${i+1}" ${row.fase===(i+1)?'selected':''}>F${i+1}</option>`).join('');
+        return `<tr>
+          <td>${row.idx ?? '—'}</td>
+          <td>${row.key.toUpperCase()}${row.circuito_index+1}</td>
+          <td>${row.tipo}</td>
+          <td>${Math.round(row.VA)} VA</td>
+          <td><select name="phase_${row.id}">${opts}</select></td>
+        </tr>`;
+      }).join('');
+    }
+    function onPhaseSelectChanged(){
+      const sys=window.__lastData?.sistema;
+      if(!sys || !sys.phase_balance) return;
+
+      const selected=collectPhaseAssignments();
+      const totals=previewTotals(selected,sys);
+      const desb=calcDesb(totals);
+      // Cambio solicitado: mostrar "(lim ≤ 5.00%)"
+      balanceSummary.textContent=`• ${totals.map((v,i)=>`F${i+1}: ${Math.round(v)} VA`).join(' • ')} • Desbalance: ${desb.toFixed(2)}% (lim ≤ 5.00%)`;
+      balanceSummary.classList.remove('muted');
+
+      const meta={}; sys.phase_balance.assignment.forEach(a=> meta[a.id]=a);
+      const previewAssign=selected.map(sel=> ({...(meta[sel.id]||{}), fase:sel.fase}));
+      renderBalanceTableFromAssignments(previewAssign, sys.phaseCount||2);
+      balanceTBody.querySelectorAll('select[name^="phase_"]').forEach(sel=>{
+        sel.addEventListener('change', onPhaseSelectChanged);
+      });
+
+      balanceNotice.textContent=`PREVIEW • Desbalance: ${desb.toFixed(2)}%`;
+      balanceNotice.classList.remove('muted');
+      balanceNotice.classList.toggle('warn',desb>5);
+    }
+
+    /* ===== Render estructurado ===== */
+    function renderStructured(data){
+      const s=data.sistema||{};
+      const div=structuredDiv;
+      const fmt={ A:v=>`${Number(v||0).toFixed(2)} A`, VA:v=>`${Math.round(v||0)} VA`, pct:v=> v==null?'—':`${Number(v).toFixed(2)} %` };
+      const blocks=[];
+      blocks.push(section('General', `Folio: <strong>${data.folio}</strong><br>Sistema: ${s.sistema} (recomendado: ${s.recomendado})<br>Demanda: ${fmt.VA(s.VA_demanda_total)} – Instalada: ${fmt.VA(s.VA_instalada_total)}<br>kW: ${Number(s.kW||0).toFixed(3)}`));
+      blocks.push(section('Alimentador', `I=${fmt.A(s.I_alim)}<br>Conductor: ${s.cal_alim} | Interruptor: ${s.proteccion} A<br>VD: ${fmt.pct(s.vd_alim)} • Longitud: ${s.largo_alim_m} m`));
+      if(s.nFocos>0){
+        const VA_circ=(s.VA_focos||0)/s.nFocos;
+        blocks.push(section('Luminarias', `Circuitos: ${s.nFocos} • VA/circuito: ${fmt.VA(VA_circ)}<br>Breaker: ${s.int_focos} A • Conductor: ${s.cal_focos||'—'}`));
+      }
+      if(s.nContactos>0){
+        const VA_circ=(s.VA_contactos||0)/s.nContactos;
+        blocks.push(section('Contactos', `Circuitos: ${s.nContactos} • VA/circuito: ${fmt.VA(VA_circ)}<br>Breaker: ${s.int_contactos} A • Conductor: ${s.cal_cont||'—'}`));
+      }
+      if(s.nContactosEspeciales>0){
+        blocks.push(section('Especiales', `Cantidad: ${s.nContactosEspeciales} • I≈${fmt.A(s.I_circ_especial)}<br>Breaker: ${s.int_contactos_especiales} A • Conductor: ${s.cal_especial||'—'}`));
+      }
+      if(s.nBombas>0){
+        const list=(s.I_bomba_list||[]).map((I,i)=> `Bomba ${i+1}: ${fmt.A(I)} Breaker ${s.int_bomba_list[i]}A Conductor ${s.cal_bomba_list[i]||'—'}`).join('<br>');
+        blocks.push(section('Bombas', list));
+      }
+      if(s.balanceEnabled && s.phase_balance && s.phaseCount>1){
+        const fasesTxt=(s.phase_balance.totals||[]).map((v,i)=>`F${i+1}: ${fmt.VA(v)}`).join(' • ');
+        blocks.push(section('Balance', `${fasesTxt}<br>Desbalance: ${fmt.pct(s.phase_balance.desbalance_pct)} (≤5%)`));
+      }
+      div.innerHTML=blocks.join('');
+      div.classList.remove('muted');
+      function section(t,inner){ return `<div style="margin-bottom:1rem;"><div style="font-weight:700;margin:.2rem 0 .4rem;color:#cbd5e1;font-size:1rem;">${t}</div><div style="font-size:.82rem;line-height:1.2rem;">${inner}</div></div>`; }
+    }
+
+    /* ===== Unifilar ===== */
+    function makeSVGResponsive(svg){
+      if(!svg) return;
+      // Forzamos que se adapte al ancho del contenedor
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      if(!svg.getAttribute('viewBox')){
+        // Si por alguna razón no hay viewBox, lo inferimos del tamaño actual
+        const w = svg.width.baseVal.value || 1200;
+        const h = svg.height.baseVal.value || 600;
+        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      }
+      svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+      svg.style.width='100%';
+      svg.style.height='auto';
+    }
+
+    function maybeGenerateSLD(){
+      const s=window.__lastData?.sistema;
+      if(!s){ statusSLD.textContent='—'; sldContainer.textContent='Genera un cálculo para visualizar.'; return; }
+      try{
+        const svgMarkup=window.generateSLD(s,{});
+        sldContainer.innerHTML=svgMarkup;
+        const svg=sldContainer.querySelector('svg');
+        makeSVGResponsive(svg);
+        statusSLD.textContent='OK'; statusSLD.className='pill ok';
+        btnDownloadSLD.disabled=false;
+        btnDownloadSLDPNG.disabled=false;
+      }catch(e){
+        statusSLD.textContent='Error'; statusSLD.className='pill error';
+        sldContainer.textContent='No fue posible generar el unifilar.';
+      }
+    }
+    btnGenSLD.addEventListener('click', ()=> maybeGenerateSLD());
+    btnFitWidth.addEventListener('click', ()=>{
+      const svg=sldContainer.querySelector('svg');
+      makeSVGResponsive(svg);
+      sldContainer.scrollLeft=0; // llevar al inicio
+    });
+    btnDownloadSLD.addEventListener('click', ()=>{
+      const svg=sldContainer.querySelector('svg'); if(!svg) return;
+      const blob=new Blob([svg.outerHTML],{type:'image/svg+xml'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='unifilar.svg'; a.click();
+    });
+    btnDownloadSLDPNG.addEventListener('click', ()=>{
+      const svg=sldContainer.querySelector('svg'); if(!svg) return;
+      const svgStr=new XMLSerializer().serializeToString(svg);
+      const img=new Image();
+      const blob=new Blob([svgStr],{type:'image/svg+xml'});
+      const url=URL.createObjectURL(blob);
+      img.onload=function(){
+        const vb=svg.viewBox.baseVal; const w=vb && vb.width? vb.width : 1600; const h=vb && vb.height? vb.height : 900;
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(b=>{
+          const a=document.createElement('a');
+          a.href=URL.createObjectURL(b);
+          a.download='unifilar.png';
+          a.click();
+        },'image/png',0.92);
+      };
+      img.src=url;
+    });
+
+    /* ===== Eventos cálculo ===== */
+    btnCalc.addEventListener('click',()=>{ setActiveTab('proposal'); run(gatherBasePayload(),{showSummary:false}); });
+    btnDemo.addEventListener('click',()=>{
+      setActiveTab('proposal');
+      run({Focos:36,PotFoco_W:50,Contactos:28,Bombas:3,Bombas_HP_List:[1,1,2],ContactosEspeciales:4,largo_alim_m:18,forcedMode:'auto'},{showSummary:false});
+    });
+    btnRecalc.addEventListener('click', async ()=>{
+      setActiveTab('proposal');
+      const base=gatherBasePayload();
+      const L=collectPerCircuitLengths();
+      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas};
+      await run(payload,{showSummary:true});
+    });
+    btnApplyBalance.addEventListener('click', async ()=>{
+      const sys=window.__lastData?.sistema;
+      if(!sys||!sys.phase_balance) return;
+      const selected=collectPhaseAssignments();
+      const base=gatherBasePayload(); const L=collectPerCircuitLengths();
+      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas,PhaseAssignments:selected};
+      const data=await run(payload,{showSummary:true});
+      if(!data||!data.sistema||!data.sistema.phase_balance) return;
+      const desb=data.sistema.phase_balance.desbalance_pct;
+      balanceNotice.textContent=`Balance aplicado. Desbalance definitivo: ${desb.toFixed(2)}%`;
+      balanceNotice.classList.remove('muted'); balanceNotice.classList.toggle('warn',desb>5);
+      setActiveTab('balance');
+    });
+    btnAutoBalance.addEventListener('click', async ()=>{
+      const base=gatherBasePayload(); const L=collectPerCircuitLengths();
+      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas};
+      const data=await run(payload,{showSummary:true});
+      if(!data||!data.sistema||!data.sistema.phase_balance) return;
+      const desb=data.sistema.phase_balance.desbalance_pct;
+      balanceNotice.textContent=`Balance automático aplicado. Desbalance: ${desb.toFixed(2)}%`;
+      balanceNotice.classList.remove('muted'); balanceNotice.classList.toggle('warn',desb>5);
+      setActiveTab('balance');
+    });
+    btnCopy.addEventListener('click',()=>{
+      if(!resumenEl.textContent || resumenEl.textContent==='—') return;
+      navigator.clipboard.writeText(resumenEl.textContent).then(()=>{
+        btnCopy.textContent='Copiado!';
+        setTimeout(()=>btnCopy.textContent='Copiar resumen',1400);
+      });
+    });
+  </script>
+</body>
+</html>
