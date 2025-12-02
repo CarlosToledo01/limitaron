@@ -1,10 +1,16 @@
 'use strict';
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
-const { calcularSistema, resumenLevantamiento } = require('./backend/lib/calc');
+// RESOLVER calc.js con ruta absoluta + log de verificación
+const calcPath = path.join(__dirname, 'backend', 'lib', 'calc.js');
+console.log('[BOOT] __dirname =', __dirname);
+console.log('[BOOT] Looking for calc at:', calcPath, 'exists:', fs.existsSync(calcPath));
+
+const { calcularSistema, resumenLevantamiento } = require(calcPath);
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
