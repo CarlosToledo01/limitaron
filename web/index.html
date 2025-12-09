@@ -230,6 +230,22 @@
             </div>
           </div>
 
+          <!-- NUEVO: Contactos específicos -->
+          <div class="section">
+            <h3>Contactos específicos</h3>
+            <div class="field-row">
+              <div class="field">
+                <label>Cantidad</label>
+                <input name="ContactosEspecificos_Cant" type="number" value="0" min="0" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>Potencias (W) lista</label>
+                <input name="ContactosEspecificos_W_List" type="text" placeholder="800, 1200, 600">
+              </div>
+            </div>
+            <div class="muted">Cada potencia en watts se considera un circuito dedicado con su propia protección y calibre.</div>
+          </div>
+
           <!-- Parámetros -->
           <div class="section">
             <h3>Parámetros del sistema</h3>
@@ -401,8 +417,19 @@
 
     /* ===== Helpers ===== */
     const parseList=s=> (!s||!s.trim())?[]: s.split(',').map(x=>Number(String(x).trim().replace(',','.'))).filter(Number.isFinite);
+
     function gatherBasePayload(){
       const fd=new FormData(form);
+
+      // Contactos específicos: cantidad y lista de potencias en W
+      const cspCant = Number(fd.get('ContactosEspecificos_Cant') || 0);
+      let cspList = parseList(fd.get('ContactosEspecificos_W_List'));
+      // Ajusta la lista a la cantidad pedida (recorta o rellena con 0)
+      if (cspCant > 0) {
+        if (cspList.length > cspCant) cspList = cspList.slice(0, cspCant);
+        if (cspList.length < cspCant) cspList = [...cspList, ...Array(cspCant - cspList.length).fill(0)];
+      }
+
       return {
         Focos:Number(fd.get('Focos')||0),
         PotFoco_W:Number(fd.get('PotFoco_W')||9),
@@ -410,20 +437,24 @@
         Bombas:Number(fd.get('Bombas')||0),
         Bombas_HP_List:parseList(fd.get('Bombas_HP_List')),
         ContactosEspeciales:Number(fd.get('ContactosEspeciales')||0),
+        // NUEVO en payload:
+        ContactosEspecificos_Cant: cspCant,
+        ContactosEspecificos_W_List: cspList,
         largo_alim_m:Number(fd.get('largo_alim_m')||0),
         forcedMode:fd.get('forcedMode') || 'auto'
       };
     }
+
     function collectPerCircuitLengths(){
       const inputs=document.querySelectorAll('#proposal input[name^="L_"]');
-      const L={focos:[],contactos:[],especiales:[],bombas:[]};
+      const L={focos:[],contactos:[],especiales:[],bombas:[],contactosEspecificos:[]};
       inputs.forEach(inp=>{
-        const m=inp.name.match(/^L_(focos|contactos|especiales|bombas)_(\d+)$/);
+        const m=inp.name.match(/^L_(focos|contactos|especiales|bombas|contactosEspecificos)_(\d+)$/);
         if(!m) return;
         const key=m[1], idx=Number(m[2]);
         L[key][idx]=Number(inp.value||0);
       });
-      ['focos','contactos','especiales','bombas'].forEach(k=> L[k]=(L[k]||[]).map(v=>Number(v||0)));
+      ['focos','contactos','especiales','bombas','contactosEspecificos'].forEach(k=> L[k]=(L[k]||[]).map(v=>Number(v||0)));
       return L;
     }
     function collectPhaseAssignments(){
@@ -512,7 +543,7 @@
         const name=`L_${ci.key}_${ci.circuito_index}`;
         const current=Number(ci.L_m ?? DEFAULT_L_DERIV);
         const vdText=ci.vd_pct==null?'—':`${Number(ci.vd_pct).toFixed(2)} %`;
-        const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba')?'':` (${ci.items})`;
+        const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba'||ci.tipo==='Contacto específico')?'':` (${ci.items})`;
         return `<tr>
           <td>${ci.idx}</td>
           <td>${ci.tipo}${itemsTxt}</td>
@@ -546,7 +577,6 @@
       const fasesTxt=totals.map((v,i)=>`F${i+1}: ${Math.round(v)} VA`).join(' • ');
       const desb=s.phase_balance.desbalance_pct!=null? Number(s.phase_balance.desbalance_pct).toFixed(2):'—';
       statusBalance.textContent='OK'; statusBalance.className='pill ok';
-      // Cambio solicitado: mostrar "(lim ≤ 5.00%)"
       balanceSummary.textContent=`• ${fasesTxt} • Desbalance: ${desb}% (lim ≤ 5.00%)`;
       balanceSummary.classList.remove('muted');
 
@@ -579,7 +609,6 @@
       const selected=collectPhaseAssignments();
       const totals=previewTotals(selected,sys);
       const desb=calcDesb(totals);
-      // Cambio solicitado: mostrar "(lim ≤ 5.00%)"
       balanceSummary.textContent=`• ${totals.map((v,i)=>`F${i+1}: ${Math.round(v)} VA`).join(' • ')} • Desbalance: ${desb.toFixed(2)}% (lim ≤ 5.00%)`;
       balanceSummary.classList.remove('muted');
 
@@ -618,6 +647,11 @@
         const list=(s.I_bomba_list||[]).map((I,i)=> `Bomba ${i+1}: ${fmt.A(I)} Breaker ${s.int_bomba_list[i]}A Conductor ${s.cal_bomba_list[i]||'—'}`).join('<br>');
         blocks.push(section('Bombas', list));
       }
+      // NUEVO: contactos específicos en resumen estructurado
+      if (s.nContactosEspecificos>0) {
+        const list=(s.contactosEspecificos_detalle||[]).map((d,i)=> `Contacto específico ${i+1}: ${fmt.VA(d.VA)} – ${fmt.A(d.I)} – ${d.breaker}A – ${d.cal}`).join('<br>');
+        blocks.push(section('Contactos específicos', list));
+      }
       if(s.balanceEnabled && s.phase_balance && s.phaseCount>1){
         const fasesTxt=(s.phase_balance.totals||[]).map((v,i)=>`F${i+1}: ${fmt.VA(v)}`).join(' • ');
         blocks.push(section('Balance', `${fasesTxt}<br>Desbalance: ${fmt.pct(s.phase_balance.desbalance_pct)} (≤5%)`));
@@ -630,11 +664,9 @@
     /* ===== Unifilar ===== */
     function makeSVGResponsive(svg){
       if(!svg) return;
-      // Forzamos que se adapte al ancho del contenedor
       svg.removeAttribute('width');
       svg.removeAttribute('height');
       if(!svg.getAttribute('viewBox')){
-        // Si por alguna razón no hay viewBox, lo inferimos del tamaño actual
         const w = svg.width.baseVal.value || 1200;
         const h = svg.height.baseVal.value || 600;
         svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -664,7 +696,7 @@
     btnFitWidth.addEventListener('click', ()=>{
       const svg=sldContainer.querySelector('svg');
       makeSVGResponsive(svg);
-      sldContainer.scrollLeft=0; // llevar al inicio
+      sldContainer.scrollLeft=0;
     });
     btnDownloadSLD.addEventListener('click', ()=>{
       const svg=sldContainer.querySelector('svg'); if(!svg) return;
@@ -698,13 +730,27 @@
     btnCalc.addEventListener('click',()=>{ setActiveTab('proposal'); run(gatherBasePayload(),{showSummary:false}); });
     btnDemo.addEventListener('click',()=>{
       setActiveTab('proposal');
-      run({Focos:36,PotFoco_W:50,Contactos:28,Bombas:3,Bombas_HP_List:[1,1,2],ContactosEspeciales:4,largo_alim_m:18,forcedMode:'auto'},{showSummary:false});
+      run({
+        Focos:36,PotFoco_W:50,Contactos:28,
+        Bombas:3,Bombas_HP_List:[1,1,2],
+        ContactosEspeciales:4,
+        // demo de contactos específicos:
+        ContactosEspecificos_Cant:2,
+        ContactosEspecificos_W_List:[800,1200],
+        largo_alim_m:18,forcedMode:'auto'
+      },{showSummary:false});
     });
     btnRecalc.addEventListener('click', async ()=>{
       setActiveTab('proposal');
       const base=gatherBasePayload();
       const L=collectPerCircuitLengths();
-      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas};
+      const payload={...base,
+        L_focos:L.focos,
+        L_contactos:L.contactos,
+        L_especiales:L.especiales,
+        L_bombas:L.bombas,
+        L_contactosEspecificos:L.contactosEspecificos
+      };
       await run(payload,{showSummary:true});
     });
     btnApplyBalance.addEventListener('click', async ()=>{
@@ -712,7 +758,14 @@
       if(!sys||!sys.phase_balance) return;
       const selected=collectPhaseAssignments();
       const base=gatherBasePayload(); const L=collectPerCircuitLengths();
-      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas,PhaseAssignments:selected};
+      const payload={...base,
+        L_focos:L.focos,
+        L_contactos:L.contactos,
+        L_especiales:L.especiales,
+        L_bombas:L.bombas,
+        L_contactosEspecificos:L.contactosEspecificos,
+        PhaseAssignments:selected
+      };
       const data=await run(payload,{showSummary:true});
       if(!data||!data.sistema||!data.sistema.phase_balance) return;
       const desb=data.sistema.phase_balance.desbalance_pct;
@@ -722,7 +775,13 @@
     });
     btnAutoBalance.addEventListener('click', async ()=>{
       const base=gatherBasePayload(); const L=collectPerCircuitLengths();
-      const payload={...base,L_focos:L.focos,L_contactos:L.contactos,L_especiales:L.especiales,L_bombas:L.bombas};
+      const payload={...base,
+        L_focos:L.focos,
+        L_contactos:L.contactos,
+        L_especiales:L.especiales,
+        L_bombas:L.bombas,
+        L_contactosEspecificos:L.contactosEspecificos
+      };
       const data=await run(payload,{showSummary:true});
       if(!data||!data.sistema||!data.sistema.phase_balance) return;
       const desb=data.sistema.phase_balance.desbalance_pct;
@@ -744,8 +803,5 @@
    <p style="margin:0.2rem 0;">Todos los derechos reservados. El uso no autorizado de este software queda estrictamente prohibido.</p>
    <p style="margin:0.2rem 0;">Los resultados son de apoyo al cálculo y no sustituyen la revisión y validación de un profesional autorizado.</p>
   </footer>
-</body>
-</html>
-
 </body>
 </html>

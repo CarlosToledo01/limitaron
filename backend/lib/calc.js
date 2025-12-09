@@ -192,14 +192,28 @@ function calcularSistema(p, forcedMode){
   const ContactosEspeciales=num(p.ContactosEspeciales);
   const includeEspeciales=(forcedMode==='mono' || forcedMode==='auto');
 
+  // NUEVO: Contactos específicos (cantidad y lista de potencias en W)
+  const ContactosEspecificos_Cant = num(p.ContactosEspecificos_Cant);
+  let ContactosEspecificos_W_List = Array.isArray(p.ContactosEspecificos_W_List) ? p.ContactosEspecificos_W_List.map(num) : [];
+  if (ContactosEspecificos_Cant>0) {
+    if (ContactosEspecificos_W_List.length > ContactosEspecificos_Cant) {
+      ContactosEspecificos_W_List = ContactosEspecificos_W_List.slice(0, ContactosEspecificos_Cant);
+    }
+    if (ContactosEspecificos_W_List.length < ContactosEspecificos_Cant) {
+      ContactosEspecificos_W_List = [...ContactosEspecificos_W_List, ...Array(ContactosEspecificos_Cant - ContactosEspecificos_W_List.length).fill(0)];
+    }
+  }
+
   const L_alim_m=num(p.largo_alim_m)||LONG_ALIMENTADOR_m_DEF;
 
   const VA_focos=Focos*PotFoco;
   const VA_contactos=Contactos*POT_CONTACTO_VA;
   const VA_bombas_total=sum(bombasHP)*746;
   const VA_especial= includeEspeciales? (ContactosEspeciales*POT_CONTACTO_ESPECIAL_VA):0;
+  // NUEVO: total VA contactos específicos (W ≈ VA)
+  const VA_contactos_especificos_total = sum(ContactosEspecificos_W_List);
 
-  const VA_instalada_total = VA_focos + VA_contactos + VA_bombas_total + VA_especial;
+  const VA_instalada_total = VA_focos + VA_contactos + VA_bombas_total + VA_especial + VA_contactos_especificos_total;
   const VA_demanda_total = VA_instalada_total <= 3000 ? VA_instalada_total : 3000 + (VA_instalada_total - 3000)*0.35;
   const kW = VA_demanda_total/1000;
 
@@ -268,9 +282,18 @@ function calcularSistema(p, forcedMode){
   const vd_especial_list=(cal_especial && nContactosEspeciales>0)
     ? Array.from({length:nContactosEspeciales},(_,i)=> porcentajeVD_Z(I_circ_especial,L_esp[i],VOLTAJE_CALC,cal_especial))
     : [];
+
+  // NUEVO: cálculo contactos específicos (cada uno dedicado por W)
+  const nContactosEspecificos = ContactosEspecificos_W_List.length;
+  const I_csp_list = ContactosEspecificos_W_List.map(W => num(W)/VOLTAJE_CALC);
+  const cal_csp_list = I_csp_list.map(I => seleccionarCalibre(I||0.0001));
+  const int_csp_list = I_csp_list.map(I => branchBreakerByCurrent(I));
+  const L_csp = toLengthsArray(p.L_contactosEspecificos, nContactosEspecificos, LONG_DERIVADOS_m_DEF);
+  const vd_csp_list = I_csp_list.map((I,i)=> porcentajeVD_Z(I, L_csp[i], VOLTAJE_CALC, cal_csp_list[i]));
   const vd_focos=vd_focos_list.length? avg(vd_focos_list):null;
   const vd_cont =vd_cont_list.length? avg(vd_cont_list):null;
   const vd_especial=vd_especial_list.length? avg(vd_especial_list):null;
+  const vd_csp = vd_csp_list.length? avg(vd_csp_list):null;
 
   const derived_proposal=[];
   let idx=1;
@@ -291,6 +314,24 @@ function calcularSistema(p, forcedMode){
     const hp=bombasHP[i];
     const VAci=hp*746;
     derived_proposal.push({ idx:idx++, tipo:'Bomba', key:'bombas', circuito_index:i, items:1, hp, VA:VAci, I:I_bomba_list[i], cal:cal_bomba_list[i]||null, breaker:int_bomba_list[i]||0, L_m:L_bombas[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_bomba_list[i]??null });
+  }
+  // NUEVO: derivados para contactos específicos
+  for(let i=0;i<nContactosEspecificos;i++){
+    const W = ContactosEspecificos_W_List[i]||0;
+    const VAci = W; // W ≈ VA
+    derived_proposal.push({
+      idx: idx++,
+      tipo: 'Contacto específico',
+      key: 'contactosEspecificos',
+      circuito_index: i,
+      items: 1,
+      VA: VAci,
+      I: I_csp_list[i]||0,
+      cal: cal_csp_list[i]||null,
+      breaker: int_csp_list[i]||0,
+      L_m: L_csp[i]||LONG_DERIVADOS_m_DEF,
+      vd_pct: vd_csp_list[i]??null
+    });
   }
 
   const balanceEnabled =
@@ -321,7 +362,9 @@ function calcularSistema(p, forcedMode){
     luminarias: seleccionarMangueraConTierra(2,cal_focos||cal_alim,groundCalibre),
     contactos: seleccionarMangueraConTierra(2,cal_cont||cal_alim,groundCalibre),
     contactos_especiales: seleccionarMangueraConTierra(2,cal_especial||cal_alim,groundCalibre),
-    bombas: seleccionarMangueraConTierra(2,cal_bomba_list[0]||cal_alim,groundCalibre)
+    bombas: seleccionarMangueraConTierra(2,cal_bomba_list[0]||cal_alim,groundCalibre),
+    // NUEVO: canalización para contactos específicos (usa el primer calibre calculado o el del alimentador)
+    contactos_especificos: seleccionarMangueraConTierra(2,cal_csp_list[0]||cal_alim,groundCalibre)
   };
 
   return {
@@ -332,9 +375,15 @@ function calcularSistema(p, forcedMode){
     Bombas:nBombas, Bombas_HP_List:bombasHP,
     ContactosEspeciales,
 
+    // NUEVO: datos de contactos específicos
+    ContactosEspecificos_Cant: nContactosEspecificos,
+    ContactosEspecificos_W_List,
+
     largo_alim_m:L_alim_m, largo_der_m:LONG_DERIVADOS_m_DEF,
 
     VA_focos, VA_contactos, VA_bombas_total, VA_contactos_especiales:VA_especial,
+    // NUEVO: VA de contactos específicos
+    VA_contactos_especificos: VA_contactos_especificos_total,
     VA_instalada_total, VA_demanda_total, kW,
 
     I_alim, sistema, recomendado,
@@ -347,6 +396,9 @@ function calcularSistema(p, forcedMode){
     nContactosEspeciales, I_circ_especial, cal_especial, vd_especial, int_contactos_especiales,
 
     nBombas, I_bomba_list, cal_bomba_list, int_bomba_list, vd_bomba_list, L_bombas,
+
+    // NUEVO: listas para contactos específicos
+    nContactosEspecificos, I_csp_list, cal_csp_list, int_csp_list, vd_csp_list, L_csp, vd_csp,
 
     vd_focos_list, vd_cont_list, vd_especial_list,
 
@@ -375,6 +427,10 @@ function resumenLevantamiento(folio, entradas, c){
   lines.push('🧾 Resumen de levantamiento');
   lines.push(`Folio: ${folio}`);
   lines.push(`• Focos: ${entradas.Focos||0}  • Contactos: ${entradas.Contactos||0}  • Bombas: ${c.Bombas||0}  • Contactos especiales: ${entradas.ContactosEspeciales||0}`);
+  // NUEVO: Contactos específicos
+  if (c.nContactosEspecificos>0) {
+    lines.push(`• Contactos específicos: ${c.nContactosEspecificos} (${(c.ContactosEspecificos_W_List||[]).join(', ')} W)`);
+  }
   lines.push(`• Longitud alimentador: ${c.largo_alim_m} m  • Longitud derivado (default): ${c.largo_der_m} m`);
   lines.push('');
 
@@ -402,13 +458,12 @@ function resumenLevantamiento(folio, entradas, c){
   // 5) Propuesta de circuitos derivados con fase al final (solo bi/tri)
   lines.push('🧩 Propuesta de circuitos derivados');
   const showPhase = (c.phaseCount||1) > 1;
-  // Construimos un mapa id -> fase para agregar "(F1)" al final
   const phaseMap = {};
   if(c.phase_balance?.assignment?.length){
     c.phase_balance.assignment.forEach(a=> { phaseMap[a.id] = a.fase; });
   }
   (c.derived_proposal||[]).forEach(ci=>{
-    const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba')?'':` (${ci.items})`;
+    const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba'||ci.tipo==='Contacto específico')?'':` (${ci.items})`;
     const id = `${ci.key}_${ci.circuito_index}`;
     const faseTxt = showPhase && phaseMap[id] ? ` (F${phaseMap[id]})` : '';
     lines.push(`• Circuito ${ci.idx}. ${ci.tipo}${itemsTxt}${faseTxt}`);
@@ -433,7 +488,9 @@ function resumenLevantamiento(folio, entradas, c){
       { key:'luminarias', label:'Luminarias' },
       { key:'contactos', label:'Contactos' },
       { key:'contactos_especiales', label:'Contactos especiales' },
-      { key:'bombas', label:'Bombas' }
+      { key:'bombas', label:'Bombas' },
+      // NUEVO: contactos específicos
+      { key:'contactos_especificos', label:'Contactos específicos' }
     ];
     mods.forEach(m=>{
       const x=c.conduit_per_module[m.key];
@@ -492,19 +549,30 @@ function resumenLevantamiento(folio, entradas, c){
     lines.push('');
   }
 
-  // 12) Conductor de puesta a tierra
+  // 12) Contactos específicos
+  if(c.nContactosEspecificos>0){
+    lines.push('🟧 Contactos específicos (circuitos dedicados por potencia del usuario)');
+    for(let i=0;i<c.nContactosEspecificos;i++){
+      const W = c.ContactosEspecificos_W_List[i]||0;
+      lines.push(`• Contacto específico ${i+1}: ${W} W | I ≈ ${amp(c.I_csp_list[i])} | Breaker: ${c.int_csp_list[i]} A | Conductor: ${c.cal_csp_list[i]} | VD: ${pct(c.vd_csp_list[i])}`);
+    }
+    lines.push('');
+  }
+
+  // 13) Conductor de puesta a tierra
   if(c.ground){
     lines.push('🟢 Conductor de puesta a tierra');
     lines.push(`• Calibre: ${c.ground.calibre} | Área: ${c.ground.area_mm2? c.ground.area_mm2.toFixed(2)+' mm²':'—'}`);
     lines.push('');
   }
 
-  // 13) VD total y referencias
+  // 14) VD total y referencias
   const worstVD=Math.max(
     ...(c.vd_focos_list||[]).filter(x=>x!=null),
     ...(c.vd_cont_list||[]).filter(x=>x!=null),
     ...(c.vd_especial_list||[]).filter(x=>x!=null),
     ...(c.vd_bomba_list||[]).filter(x=>x!=null),
+    ...(c.vd_csp_list||[]).filter(x=>x!=null),
     0
   );
   const vdTotal=(c.vd_alim||0)+worstVD;

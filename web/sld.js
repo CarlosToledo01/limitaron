@@ -51,6 +51,14 @@
       <path d="M${x-10} ${y+8} C ${x} ${y-14} ${x} ${y-14} ${x+10} ${y+8}" stroke="#000" fill="none"/>
     </g>`;
   }
+  // NUEVO: símbolo para "Contacto específico" (usamos receptáculo, pero lo etiquetamos como dedicado)
+  function symbolSpecific(x,y){
+    return `<g stroke="#000" stroke-width="2" fill="none">
+      <rect x="${x-15}" y="${y-15}" width="30" height="30" rx="4" ry="4"/>
+      <circle cx="${x-6}" cy="${y}" r="3" fill="#000"/>
+      <circle cx="${x+6}" cy="${y}" r="3" fill="#000"/>
+    </g>`;
+  }
 
   /* ===== Preparación de datos ===== */
   function buildCircuits(s){
@@ -152,6 +160,7 @@
       if(tipo==='Contactos') return cpm.contactos?.tubo;
       if(tipo==='Contacto especial') return cpm.contactos_especiales?.tubo;
       if(tipo==='Bomba') return cpm.bombas?.tubo;
+      if(tipo==='Contacto específico') return cpm.contactos_especificos?.tubo; // NUEVO
       return undefined;
     }
 
@@ -168,6 +177,7 @@
       else if(ci.tipo==='Contactos') loadSymbol = symbolRecept(x, loadY);
       else if(ci.tipo==='Contacto especial') loadSymbol = symbolSpecial(x, loadY);
       else if(ci.tipo==='Bomba') loadSymbol = symbolPump(x, loadY);
+      else if(ci.tipo==='Contacto específico') loadSymbol = symbolSpecific(x, loadY); // NUEVO
       else loadSymbol = symbolLamp(x, loadY);
 
       const vdText = ci.vd_pct!=null? `${ci.vd_pct.toFixed(2)}%`:'—';
@@ -178,9 +188,22 @@
       const t3 = t2 + lineGap;
       const t4 = t3 + lineGap;
 
-      // Canalización (tubo) por tipo de circuito – NUEVO
+      // Canalización (tubo) por tipo de circuito – incluye contactos específicos
       const tubo = tuboForType(ci.tipo);
       const tuboY = groundY + 68;
+
+      // Etiqueta amigable del tipo
+      function tipoLabel(tipo){
+        if(tipo==='Luminarias') return 'LUMINARIAS';
+        if(tipo==='Contactos') return 'CONTACTOS';
+        if(tipo==='Contacto especial') return 'Contacto especial';
+        if(tipo==='Contacto específico') return 'Contacto específico';
+        if(tipo==='Bomba') return 'Bomba';
+        return String(tipo||'CIRCUITO');
+      }
+
+      const itemsIsDedicated = (ci.tipo==='Contacto especial' || ci.tipo==='Bomba' || ci.tipo==='Contacto específico');
+      const itemsText = itemsIsDedicated ? '' : ` ${T(ci.items)||1}`;
 
       body += `
         <g>
@@ -206,7 +229,7 @@
           </text>
           ${loadSymbol}
           <text x="${x}" y="${loadY+42}" font-size="12" text-anchor="middle" fill="#000" font-weight="600">
-            ${T(ci.items)||1} ${(ci.tipo==='Luminarias'?'LUMINARIAS':ci.tipo==='Contactos'?'CONTACTOS':ci.tipo==='Contacto especial'?'Contacto especial':ci.tipo)}
+            ${tipoLabel(ci.tipo)}${itemsText}
           </text>
           ${symbolGround(x, groundY)}
           <text x="${x}" y="${groundY+54}" font-size="11" text-anchor="middle" fill="${COLORS.ground}">

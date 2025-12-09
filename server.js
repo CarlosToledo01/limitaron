@@ -35,21 +35,32 @@ app.use('/api/', rateLimit({
   legacyHeaders: false
 }));
 
+// Endpoint de cálculo – incorpora "Contactos específicos"
 app.post('/api/v1/calculate', (req, res) => {
   try {
     const payload = req.body || {};
     const forcedMode = String(payload.forcedMode || 'auto');
+
+    // Log breve para diagnóstico
+    console.log('[CALC] Payload keys:', Object.keys(payload));
+
     const sistemaObj = calcularSistema(payload, forcedMode);
+
+    // Pasamos también los campos nuevos al resumen (aunque el resumen usa s.sistema)
     const resumen = resumenLevantamiento(
       sistemaObj.folio,
       {
         Focos: payload.Focos,
         Contactos: payload.Contactos,
         Bombas: payload.Bombas,
-        ContactosEspeciales: payload.ContactosEspeciales
+        ContactosEspeciales: payload.ContactosEspeciales,
+        // NUEVO: contactos específicos en entradas (informativo)
+        ContactosEspecificos_Cant: payload.ContactosEspecificos_Cant,
+        ContactosEspecificos_W_List: payload.ContactosEspecificos_W_List
       },
       sistemaObj
     );
+
     res.json({ ok: true, sistema: sistemaObj, resumen });
   } catch (err) {
     console.error('Error en /api/v1/calculate', err);
