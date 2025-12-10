@@ -3,7 +3,7 @@
 const { computeFeederVDPercent } = require('./vd');
 
 /* ===================== CONFIG / CONSTANTES ===================== */
-const VOLTAJE_CALC = 120;
+const VOLTAJE_CALC = 120; // usado solo en algunos textos; las fórmulas nuevas usan bases fijas abajo
 const MONO_LIM_kW  = 5;
 const BIFA_LIM_kW  = 10;
 
@@ -29,6 +29,12 @@ const MIN_BREAKER_A = 15;
 
 const CRITERIA_URL = 'http://bit.ly/4o4q4Zf';
 
+/* Bases fijas solicitadas */
+const V_MONO_EN = 120;      // En: línea-neutro
+const V_BIFA_EN = 220;      // En para fórmula 2f-3h
+const V_TRIFA_EF = 220;     // Ef: línea-línea
+const FP_TRIFA   = 0.86;
+
 /* ===================== UTILIDADES ===================== */
 const num  = x => Number.isFinite(Number(x)) ? Number(x) : 0;
 const sum  = arr => Array.isArray(arr)? arr.reduce((a,b)=>a+num(b),0):0;
@@ -40,11 +46,32 @@ function generarFolio(){
   return `LIM-${letras}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${pad(d.getMilliseconds(),3)}`;
 }
 
-// VD genérica para derivados
-function porcentajeVD_Z(I,L_m,V,awg){
-  const Z = ZEFF_OHMKM[awg]; if(!Z||!I||!L_m) return null;
-  return (2*I*L_m*Z)/(V*10);
+/* Corriente por tipo de conexión (fijo) */
+function corrientePorTipo(P_W, tipo){
+  const P = Math.max(0, num(P_W));
+  if(tipo==='bifa') return P / (Math.SQRT2 * 220);
+  if(tipo==='trifa') return P / (Math.sqrt(3) * V_TRIFA_EF * FP_TRIFA);
+  // mono
+  return P / V_MONO_EN;
 }
+
+/* VD derivado por tipo de conexión (fijo) */
+function vdBranchPorTipo(I, L_m, calibreAWG, tipo){
+  const Z = ZEFF_OHMKM[calibreAWG]; if(!Z || !I || !L_m) return null;
+  const L = Math.max(0, num(L_m));
+  const Ieff = Math.max(0, num(I));
+  if(tipo==='bifa'){
+    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=220
+    return (Ieff * L * Z) / (V_BIFA_EN * 10);
+  }
+  if(tipo==='trifa'){
+    // 3f-4h: %e = (√3 * I * L * Z) / (Ef * 10) con Ef=220
+    return (Math.sqrt(3) * Ieff * L * Z) / (V_TRIFA_EF * 10);
+  }
+  // 1f-2h: %e = (2 * I * L * Z) / (En * 10) con En=120
+  return (2 * Ieff * L * Z) / (V_MONO_EN * 10);
+}
+
 function seleccionarCalibre(I){
   for(const [awg,amp] of Object.entries(AMPACIDAD)) if(I<=amp) return awg;
   return '2AWG';
@@ -131,7 +158,8 @@ function buildBalanceItemsFromProposal(derived){
     tipo: ci.tipo,
     key: ci.key,
     circuito_index: ci.circuito_index,
-    idx: numSafe(ci.idx)
+    idx: numSafe(ci.idx),
+    tipo_conexion: ci.tipo_conexion || 'mono'
   }));
 }
 function balancearFases(phaseCount, items){
@@ -147,7 +175,7 @@ function balancearFases(phaseCount, items){
   const assignment=[];
   phases.forEach(p=>{
     p.circuits.forEach(ci=>{
-      assignment.push({ id:ci.id,key:ci.key,circuito_index:ci.circuito_index,tipo:ci.tipo,VA:ci.VA,fase:p.idx+1,idx:ci.idx });
+      assignment.push({ id:ci.id,key:ci.key,circuito_index:ci.circuito_index,tipo:ci.tipo,VA:ci.VA,fase:p.idx+1,idx:ci.idx, tipo_conexion: ci.tipo_conexion });
     });
   });
   return { phases, totals, desbalance_pct: Number(desb.toFixed(2)), assignment };
@@ -173,7 +201,7 @@ function applyManualPhaseAssignments(phaseCount, items, manual){
   const assignment=[];
   phases.forEach(p=>{
     p.circuits.forEach(ci=>{
-      assignment.push({ id:ci.id,key:ci.key,circuito_index:ci.circuito_index,tipo:ci.tipo,VA:ci.VA,fase:p.idx+1,idx:ci.idx });
+      assignment.push({ id:ci.id,key:ci.key,circuito_index:ci.circuito_index,tipo:ci.tipo,VA:ci.VA,fase:p.idx+1,idx:ci.idx, tipo_conexion: ci.tipo_conexion });
     });
   });
   return { phases, totals, desbalance_pct:Number(desb.toFixed(2)), assignment };
@@ -189,35 +217,37 @@ function calcularSistema(p, forcedMode){
   if(Bombas>0 && bombasHP.length===0) bombasHP=Array.from({length:Bombas},()=>1);
   if(bombasHP.length!==Bombas){ bombasHP=bombasHP.slice(0,Bombas); while(bombasHP.length<Bombas) bombasHP.push(1); }
 
+  // Tipos conexión de bombas
+  let bombasTipos = Array.isArray(p.Bombas_Tipos_List)? p.Bombas_Tipos_List.map(x=> String(x||'mono').toLowerCase()) : [];
+  if(bombasTipos.length!==Bombas){ bombasTipos=bombasTipos.slice(0,Bombas); while(bombasTipos.length<Bombas) bombasTipos.push('mono'); }
+
   const ContactosEspeciales=num(p.ContactosEspeciales);
   const includeEspeciales=(forcedMode==='mono' || forcedMode==='auto');
 
-  // NUEVO: Contactos específicos (cantidad y lista de potencias en W)
+  // Contactos específicos
   const ContactosEspecificos_Cant = num(p.ContactosEspecificos_Cant);
   let ContactosEspecificos_W_List = Array.isArray(p.ContactosEspecificos_W_List) ? p.ContactosEspecificos_W_List.map(num) : [];
+  let ContactosEspecificos_Tipos_List = Array.isArray(p.ContactosEspecificos_Tipos_List) ? p.ContactosEspecificos_Tipos_List.map(x=> String(x||'mono').toLowerCase()) : [];
   if (ContactosEspecificos_Cant>0) {
-    if (ContactosEspecificos_W_List.length > ContactosEspecificos_Cant) {
-      ContactosEspecificos_W_List = ContactosEspecificos_W_List.slice(0, ContactosEspecificos_Cant);
-    }
-    if (ContactosEspecificos_W_List.length < ContactosEspecificos_Cant) {
-      ContactosEspecificos_W_List = [...ContactosEspecificos_W_List, ...Array(ContactosEspecificos_Cant - ContactosEspecificos_W_List.length).fill(0)];
-    }
+    if (ContactosEspecificos_W_List.length > ContactosEspecificos_Cant) ContactosEspecificos_W_List = ContactosEspecificos_W_List.slice(0, ContactosEspecificos_Cant);
+    if (ContactosEspecificos_W_List.length < ContactosEspecificos_Cant) ContactosEspecificos_W_List = [...ContactosEspecificos_W_List, ...Array(ContactosEspecificos_Cant - ContactosEspecificos_W_List.length).fill(0)];
+    if (ContactosEspecificos_Tipos_List.length > ContactosEspecificos_Cant) ContactosEspecificos_Tipos_List = ContactosEspecificos_Tipos_List.slice(0, ContactosEspecificos_Cant);
+    if (ContactosEspecificos_Tipos_List.length < ContactosEspecificos_Cant) ContactosEspecificos_Tipos_List = [...ContactosEspecificos_Tipos_List, ...Array(ContactosEspecificos_Cant - ContactosEspecificos_Tipos_List.length).fill('mono')];
   }
 
   const L_alim_m=num(p.largo_alim_m)||LONG_ALIMENTADOR_m_DEF;
 
+  // Cálculo VA base y recomendación preliminar
   const VA_focos=Focos*PotFoco;
   const VA_contactos=Contactos*POT_CONTACTO_VA;
   const VA_bombas_total=sum(bombasHP)*746;
   const VA_especial= includeEspeciales? (ContactosEspeciales*POT_CONTACTO_ESPECIAL_VA):0;
-  // NUEVO: total VA contactos específicos (W ≈ VA)
   const VA_contactos_especificos_total = sum(ContactosEspecificos_W_List);
 
-  const VA_instalada_total = VA_focos + VA_contactos + VA_bombas_total + VA_especial + VA_contactos_especificos_total;
-  const VA_demanda_total = VA_instalada_total <= 3000 ? VA_instalada_total : 3000 + (VA_instalada_total - 3000)*0.35;
-  const kW = VA_demanda_total/1000;
-
-  const recomendado = kW<=MONO_LIM_kW ? 'Monofásico' : kW<=BIFA_LIM_kW ? 'Bifásico' : 'Trifásico';
+  const VA_instalada_total_pre = VA_focos + VA_contactos + VA_bombas_total + VA_especial + VA_contactos_especificos_total;
+  const VA_demanda_total_pre = VA_instalada_total_pre <= 3000 ? VA_instalada_total_pre : 3000 + (VA_instalada_total_pre - 3000)*0.35;
+  const kW_pre = VA_demanda_total_pre/1000;
+  const recomendado = kW_pre<=MONO_LIM_kW ? 'Monofásico' : kW_pre<=BIFA_LIM_kW ? 'Bifásico' : 'Trifásico';
 
   let sistema;
   if(forcedMode==='mono') sistema='Monofásico';
@@ -225,16 +255,29 @@ function calcularSistema(p, forcedMode){
   else if(forcedMode==='trifa') sistema='Trifásico';
   else sistema=recomendado;
 
-  const I_alim=VA_demanda_total/VOLTAJE_CALC;
+  // Validación por sistema
+  function isTipoValido(tipo, sistema){
+    if(sistema==='Monofásico') return tipo==='mono';
+    if(sistema==='Bifásico') return (tipo==='mono' || tipo==='bifa');
+    if(sistema==='Trifásico') return (tipo==='mono' || tipo==='bifa' || tipo==='trifa');
+    return true;
+  }
+  const bombasValidMask = bombasTipos.map(t=> isTipoValido(t, sistema));
+  const cspValidMask = ContactosEspecificos_Tipos_List.map(t=> isTipoValido(t, sistema));
+
+  // Demanda: excluir cargas inválidas
+  const VA_bombas_valid = bombasHP.reduce((acc,hp,i)=> acc + (bombasValidMask[i]? hp*746 : 0), 0);
+  const VA_csp_valid    = ContactosEspecificos_W_List.reduce((acc,W,i)=> acc + (cspValidMask[i]? W : 0), 0);
+
+  const VA_instalada_total = VA_focos + VA_contactos + VA_especial + VA_bombas_valid + VA_csp_valid;
+  const VA_demanda_total = VA_instalada_total <= 3000 ? VA_instalada_total : 3000 + (VA_instalada_total - 3000)*0.35;
+  const kW = VA_demanda_total/1000;
+
+  const I_alim=VA_demanda_total/V_MONO_EN; // alimentador usa 120 V base para texto; vdFeeder calcula según sistema
   const cal_alim=seleccionarCalibre(I_alim);
 
-  // VD alimentador por sistema
-  const vdFeeder = computeFeederVDPercent({
-    sistema,
-    I: I_alim,
-    L_m: L_alim_m,
-    calibre: cal_alim
-  });
+  // VD alimentador
+  const vdFeeder = computeFeederVDPercent({ sistema, I: I_alim, L_m: L_alim_m, calibre: cal_alim });
   const vd_alim = vdFeeder.vd_pct;
   const vd_Vbase = vdFeeder.Vbase;
   const vd_formula = vdFeeder.formula;
@@ -243,105 +286,116 @@ function calcularSistema(p, forcedMode){
   const prot_candidato=nearestStandardBreaker(I_alim);
   const proteccion=Math.max(MIN_BREAKER_A, Math.min(prot_candidato, nearestStandardBreaker(AMPACIDAD[cal_alim]||prot_candidato)));
 
+  /* Derivados estándar (mono por diseño) */
   const nFocos=circuitsFor(Focos,MAX_FOCOS_POR_CIRCUITO,VA_focos);
   const count_focos_list=splitCount(Focos,nFocos);
-  const I_focos_list=count_focos_list.map(cnt=> (cnt*PotFoco)/VOLTAJE_CALC);
+  const I_focos_list=count_focos_list.map(cnt=> corrientePorTipo(cnt*PotFoco, 'mono'));
   const I_circ_focos_worst=I_focos_list.length? Math.max(...I_focos_list):0;
   const cal_focos= I_circ_focos_worst>0 ? seleccionarCalibre(I_circ_focos_worst):null;
   const int_focos=nFocos>0? branchBreakerByCurrent(I_circ_focos_worst):0;
 
   const nContactos=circuitsFor(Contactos,MAX_CONTACTOS_POR_CIRCUITO,VA_contactos);
   const count_cont_list=splitCount(Contactos,nContactos);
-  const I_cont_list=count_cont_list.map(cnt=> (cnt*POT_CONTACTO_VA)/VOLTAJE_CALC);
+  const I_cont_list=count_cont_list.map(cnt=> corrientePorTipo(cnt*POT_CONTACTO_VA, 'mono'));
   const I_circ_cont_worst=I_cont_list.length? Math.max(...I_cont_list):0;
   const cal_cont= I_circ_cont_worst>0? seleccionarCalibre(I_circ_cont_worst):null;
   const int_contactos=nContactos>0? branchBreakerByCurrent(I_circ_cont_worst):0;
 
   const nContactosEspeciales=includeEspeciales? ContactosEspeciales:0;
-  const I_circ_especial=(includeEspeciales && nContactosEspeciales>0)? POT_CONTACTO_ESPECIAL_VA/VOLTAJE_CALC :0;
+  const I_circ_especial=(includeEspeciales && nContactosEspeciales>0)? corrientePorTipo(POT_CONTACTO_ESPECIAL_VA, 'mono') :0;
   const cal_especial= I_circ_especial>0? seleccionarCalibre(I_circ_especial):null;
   const int_contactos_especiales= nContactosEspeciales>0? branchBreakerByCurrent(I_circ_especial):0;
 
+  /* Bombas (I por tipo, VD por tipo) */
   const nBombas=bombasHP.length;
-  const I_bomba_list=bombasHP.map(hp=> (hp*746)/VOLTAJE_CALC);
+  const P_bombas_W = bombasHP.map(hp=> num(hp)*746);
+  const I_bomba_list = P_bombas_W.map((P,i)=> corrientePorTipo(P, bombasTipos[i]||'mono'));
   const cal_bomba_list=I_bomba_list.map(I=> seleccionarCalibre(I||0.0001));
   const int_bomba_list=I_bomba_list.map(I=> branchBreakerByCurrent(I));
   const L_bombas=toLengthsArray(p.L_bombas,nBombas,LONG_DERIVADOS_m_DEF);
-  const vd_bomba_list=I_bomba_list.map((I,i)=> porcentajeVD_Z(I,L_bombas[i],VOLTAJE_CALC,cal_bomba_list[i]));
+  const vd_bomba_list=I_bomba_list.map((I,i)=> vdBranchPorTipo(I, L_bombas[i], cal_bomba_list[i], bombasTipos[i]||'mono'));
 
+  /* Longitudes y VD por grupos mono */
   const L_focos=toLengthsArray(p.L_focos,nFocos,LONG_DERIVADOS_m_DEF);
   const L_cont =toLengthsArray(p.L_contactos,nContactos,LONG_DERIVADOS_m_DEF);
   const L_esp  =toLengthsArray(p.L_especiales,nContactosEspeciales,LONG_DERIVADOS_m_DEF);
 
   const vd_focos_list=(cal_focos && nFocos>0)
-    ? count_focos_list.map((cnt,i)=> porcentajeVD_Z((cnt*PotFoco)/VOLTAJE_CALC,L_focos[i],VOLTAJE_CALC,cal_focos))
+    ? count_focos_list.map((cnt,i)=> vdBranchPorTipo(corrientePorTipo(cnt*PotFoco,'mono'), L_focos[i], cal_focos, 'mono'))
     : [];
   const vd_cont_list=(cal_cont && nContactos>0)
-    ? count_cont_list.map((cnt,i)=> porcentajeVD_Z((cnt*POT_CONTACTO_VA)/VOLTAJE_CALC,L_cont[i],VOLTAJE_CALC,cal_cont))
+    ? count_cont_list.map((cnt,i)=> vdBranchPorTipo(corrientePorTipo(cnt*POT_CONTACTO_VA,'mono'), L_cont[i], cal_cont, 'mono'))
     : [];
   const vd_especial_list=(cal_especial && nContactosEspeciales>0)
-    ? Array.from({length:nContactosEspeciales},(_,i)=> porcentajeVD_Z(I_circ_especial,L_esp[i],VOLTAJE_CALC,cal_especial))
+    ? Array.from({length:nContactosEspeciales},(_,i)=> vdBranchPorTipo(I_circ_especial, L_esp[i], cal_especial, 'mono'))
     : [];
 
-  // NUEVO: cálculo contactos específicos (cada uno dedicado por W)
+  /* Contactos específicos (I y VD por tipo) */
   const nContactosEspecificos = ContactosEspecificos_W_List.length;
-  const I_csp_list = ContactosEspecificos_W_List.map(W => num(W)/VOLTAJE_CALC);
+  const I_csp_list = ContactosEspecificos_W_List.map((W,i)=> corrientePorTipo(W, ContactosEspecificos_Tipos_List[i]||'mono'));
   const cal_csp_list = I_csp_list.map(I => seleccionarCalibre(I||0.0001));
   const int_csp_list = I_csp_list.map(I => branchBreakerByCurrent(I));
   const L_csp = toLengthsArray(p.L_contactosEspecificos, nContactosEspecificos, LONG_DERIVADOS_m_DEF);
-  const vd_csp_list = I_csp_list.map((I,i)=> porcentajeVD_Z(I, L_csp[i], VOLTAJE_CALC, cal_csp_list[i]));
+  const vd_csp_list = I_csp_list.map((I,i)=> vdBranchPorTipo(I, L_csp[i], cal_csp_list[i], ContactosEspecificos_Tipos_List[i]||'mono'));
+
   const vd_focos=vd_focos_list.length? avg(vd_focos_list):null;
   const vd_cont =vd_cont_list.length? avg(vd_cont_list):null;
   const vd_especial=vd_especial_list.length? avg(vd_especial_list):null;
   const vd_csp = vd_csp_list.length? avg(vd_csp_list):null;
 
+  /* Propuesta derivada (incluye tipo_conexion y validez) */
   const derived_proposal=[];
   let idx=1;
   for(let i=0;i<nFocos;i++){
     const items=count_focos_list[i]||0;
     const VAci=items*PotFoco;
-    derived_proposal.push({ idx:idx++, tipo:'Luminarias', key:'focos', circuito_index:i, items, VA:VAci, I:VAci/VOLTAJE_CALC, cal:cal_focos||null, breaker:int_focos||0, L_m:L_focos[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_focos_list[i]??null });
+    derived_proposal.push({ idx:idx++, tipo:'Luminarias', key:'focos', circuito_index:i, items, VA:VAci, I:I_focos_list[i], cal:cal_focos||null, breaker:int_focos||0, L_m:L_focos[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_focos_list[i]??null, tipo_conexion:'mono', valido:true });
   }
   for(let i=0;i<nContactos;i++){
     const items=count_cont_list[i]||0;
     const VAci=items*POT_CONTACTO_VA;
-    derived_proposal.push({ idx:idx++, tipo:'Contactos', key:'contactos', circuito_index:i, items, VA:VAci, I:VAci/VOLTAJE_CALC, cal:cal_cont||null, breaker:int_contactos||0, L_m:L_cont[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_cont_list[i]??null });
+    derived_proposal.push({ idx:idx++, tipo:'Contactos', key:'contactos', circuito_index:i, items, VA:VAci, I:I_cont_list[i], cal:cal_cont||null, breaker:int_contactos||0, L_m:L_cont[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_cont_list[i]??null, tipo_conexion:'mono', valido:true });
   }
   for(let i=0;i<nContactosEspeciales;i++){
-    derived_proposal.push({ idx:idx++, tipo:'Contacto especial', key:'especiales', circuito_index:i, items:1, VA:POT_CONTACTO_ESPECIAL_VA, I:I_circ_especial, cal:cal_especial||null, breaker:int_contactos_especiales||0, L_m:L_esp[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_especial_list[i]??null });
+    derived_proposal.push({ idx:idx++, tipo:'Contacto especial', key:'especiales', circuito_index:i, items:1, VA:POT_CONTACTO_ESPECIAL_VA, I:I_circ_especial, cal:cal_especial||null, breaker:int_contactos_especiales||0, L_m:L_esp[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_especial_list[i]??null, tipo_conexion:'mono', valido:true });
   }
   for(let i=0;i<nBombas;i++){
     const hp=bombasHP[i];
-    const VAci=hp*746;
-    derived_proposal.push({ idx:idx++, tipo:'Bomba', key:'bombas', circuito_index:i, items:1, hp, VA:VAci, I:I_bomba_list[i], cal:cal_bomba_list[i]||null, breaker:int_bomba_list[i]||0, L_m:L_bombas[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_bomba_list[i]??null });
+    const VAci=num(hp)*746;
+    const tipo=bombasTipos[i]||'mono';
+    const valido = isTipoValido(tipo, sistema);
+    derived_proposal.push({ idx:idx++, tipo:'Bomba', key:'bombas', circuito_index:i, items:1, hp, VA:VAci, I:I_bomba_list[i], cal:cal_bomba_list[i]||null, breaker:int_bomba_list[i]||0, L_m:L_bombas[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_bomba_list[i]??null, tipo_conexion:tipo, valido });
   }
-  // NUEVO: derivados para contactos específicos
   for(let i=0;i<nContactosEspecificos;i++){
     const W = ContactosEspecificos_W_List[i]||0;
-    const VAci = W; // W ≈ VA
-    derived_proposal.push({
-      idx: idx++,
-      tipo: 'Contacto específico',
-      key: 'contactosEspecificos',
-      circuito_index: i,
-      items: 1,
-      VA: VAci,
-      I: I_csp_list[i]||0,
-      cal: cal_csp_list[i]||null,
-      breaker: int_csp_list[i]||0,
-      L_m: L_csp[i]||LONG_DERIVADOS_m_DEF,
-      vd_pct: vd_csp_list[i]??null
-    });
+    const VAci = W;
+    const tipo = ContactosEspecificos_Tipos_List[i]||'mono';
+    const valido = isTipoValido(tipo, sistema);
+    derived_proposal.push({ idx:idx++, tipo:'Contacto específico', key:'contactosEspecificos', circuito_index:i, items:1, VA:VAci, I:I_csp_list[i]||0, cal:cal_csp_list[i]||null, breaker:int_csp_list[i]||0, L_m:L_csp[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_csp_list[i]??null, tipo_conexion:tipo, valido });
   }
 
+  /* Balance habilitado y reglas */
   const balanceEnabled =
     (forcedMode==='auto' && (recomendado==='Bifásico' || recomendado==='Trifásico')) ||
     forcedMode==='bifa' || forcedMode==='trifa';
   const phaseCount = balanceEnabled ? (sistema==='Trifásico'?3:(sistema==='Bifásico'?2:1)) : 1;
 
+  function incluirEnBalance(ci){
+    if(!ci.valido) return false;
+    if(sistema==='Bifásico'){
+      if((ci.tipo==='Bomba' || ci.tipo==='Contacto específico') && ci.tipo_conexion==='bifa') return false;
+      return true;
+    }
+    if(sistema==='Trifásico'){
+      if((ci.tipo==='Bomba' || ci.tipo==='Contacto específico') && ci.tipo_conexion==='trifa') return false;
+      return true;
+    }
+    return ci.tipo_conexion==='mono';
+  }
+
   let phase_balance=null;
   if(balanceEnabled && phaseCount>1){
-    const items=buildBalanceItemsFromProposal(derived_proposal);
+    const items=buildBalanceItemsFromProposal(derived_proposal.filter(incluirEnBalance));
     if(Array.isArray(p.PhaseAssignments) && p.PhaseAssignments.length){
       phase_balance=applyManualPhaseAssignments(phaseCount,items,p.PhaseAssignments);
     } else {
@@ -349,6 +403,7 @@ function calcularSistema(p, forcedMode){
     }
   }
 
+  /* Ground y canalización */
   const groundSel=selectGroundCalibre(proteccion);
   const groundCalibre=groundSel.awg||'14AWG';
   const groundArea_mm2=groundSel.mm2||AREA_CONDUCTOR[groundCalibre]||null;
@@ -363,27 +418,40 @@ function calcularSistema(p, forcedMode){
     contactos: seleccionarMangueraConTierra(2,cal_cont||cal_alim,groundCalibre),
     contactos_especiales: seleccionarMangueraConTierra(2,cal_especial||cal_alim,groundCalibre),
     bombas: seleccionarMangueraConTierra(2,cal_bomba_list[0]||cal_alim,groundCalibre),
-    // NUEVO: canalización para contactos específicos (usa el primer calibre calculado o el del alimentador)
     contactos_especificos: seleccionarMangueraConTierra(2,cal_csp_list[0]||cal_alim,groundCalibre)
   };
+
+  const contactosEspecificos_detalle = ContactosEspecificos_W_List.map((W,i)=>({
+    VA: W, I: I_csp_list[i], breaker: int_csp_list[i], cal: cal_csp_list[i], tipo_conexion: ContactosEspecificos_Tipos_List[i]||'mono', valido: cspValidMask[i]
+  }));
+
+  /* Advertencias por cargas inválidas */
+  const warnings=[];
+  if(sistema==='Monofásico'){
+    if(bombasValidMask.some(v=>!v)) warnings.push('No es posible conectar bombas bifásicas/trifásicas en sistema monofásico. Estas cargas fueron excluidas.');
+    if(cspValidMask.some(v=>!v)) warnings.push('No es posible conectar contactos específicos bifásicos/trifásicos en sistema monofásico. Estas cargas fueron excluidas.');
+  }
+  if(sistema==='Bifásico'){
+    if(bombasTipos.some(t=>t==='trifa')) warnings.push('No es posible conectar bombas trifásicas en sistema bifásico. Estas cargas fueron excluidas.');
+    if(ContactosEspecificos_Tipos_List.some(t=>t==='trifa')) warnings.push('No es posible conectar contactos específicos trifásicos en sistema bifásico. Estas cargas fueron excluidas.');
+  }
 
   return {
     ok:true,
     folio: generarFolio(),
 
     Focos, PotFoco_W:PotFoco, Contactos,
-    Bombas:nBombas, Bombas_HP_List:bombasHP,
+    Bombas:nBombas, Bombas_HP_List:bombasHP, bombas_tipos_list:bombasTipos,
     ContactosEspeciales,
 
-    // NUEVO: datos de contactos específicos
     ContactosEspecificos_Cant: nContactosEspecificos,
     ContactosEspecificos_W_List,
+    ContactosEspecificos_Tipos_List,
 
     largo_alim_m:L_alim_m, largo_der_m:LONG_DERIVADOS_m_DEF,
 
-    VA_focos, VA_contactos, VA_bombas_total, VA_contactos_especiales:VA_especial,
-    // NUEVO: VA de contactos específicos
-    VA_contactos_especificos: VA_contactos_especificos_total,
+    VA_focos, VA_contactos, VA_bombas_total: VA_bombas_valid, VA_contactos_especiales:VA_especial,
+    VA_contactos_especificos: VA_csp_valid,
     VA_instalada_total, VA_demanda_total, kW,
 
     I_alim, sistema, recomendado,
@@ -397,7 +465,6 @@ function calcularSistema(p, forcedMode){
 
     nBombas, I_bomba_list, cal_bomba_list, int_bomba_list, vd_bomba_list, L_bombas,
 
-    // NUEVO: listas para contactos específicos
     nContactosEspecificos, I_csp_list, cal_csp_list, int_csp_list, vd_csp_list, L_csp, vd_csp,
 
     vd_focos_list, vd_cont_list, vd_especial_list,
@@ -411,7 +478,10 @@ function calcularSistema(p, forcedMode){
 
     numCond,
     tubo: conduit_per_module.alimentador.tubo,
-    ocupacion_pct: conduit_per_module.alimentador.ocupacion_pct
+    ocupacion_pct: conduit_per_module.alimentador.ocupacion_pct,
+
+    contactosEspecificos_detalle,
+    warnings
   };
 }
 
@@ -423,11 +493,10 @@ function resumenLevantamiento(folio, entradas, c){
 
   const lines=[];
 
-  // 1) Resumen de levantamiento (encabezado primero)
+  // 1) Resumen de levantamiento
   lines.push('🧾 Resumen de levantamiento');
   lines.push(`Folio: ${folio}`);
   lines.push(`• Focos: ${entradas.Focos||0}  • Contactos: ${entradas.Contactos||0}  • Bombas: ${c.Bombas||0}  • Contactos especiales: ${entradas.ContactosEspeciales||0}`);
-  // NUEVO: Contactos específicos
   if (c.nContactosEspecificos>0) {
     lines.push(`• Contactos específicos: ${c.nContactosEspecificos} (${(c.ContactosEspecificos_W_List||[]).join(', ')} W)`);
   }
@@ -439,13 +508,13 @@ function resumenLevantamiento(folio, entradas, c){
   lines.push(`${c.sistema} (recomendado: ${c.recomendado})`);
   lines.push('');
 
-  // 3) Demanda aprox
+  // 3) Demanda
   lines.push('📊 Demanda aproximada');
-  lines.push(`• Carga instalada total: ${va(c.VA_instalada_total)}`);
+  lines.push(`• Carga instalada total (válida): ${va(c.VA_instalada_total)}`);
   lines.push(`• Demanda máxima: ${va(c.VA_demanda_total)} (${(c.kW||0).toFixed(3)} kW)`);
   lines.push('');
 
-  // 4) Balance de cargas por fase (si aplica)
+  // 4) Balance por fase
   if(c.balanceEnabled && c.phase_balance && c.phaseCount>1){
     const totals=c.phase_balance.totals||[];
     const fasesTxt=totals.map((v,i)=>`F${i+1}: ${va(v)}`).join(' • ');
@@ -455,7 +524,7 @@ function resumenLevantamiento(folio, entradas, c){
     lines.push('');
   }
 
-  // 5) Propuesta de circuitos derivados con fase al final (solo bi/tri)
+  // 5) Propuesta de circuitos derivados
   lines.push('🧩 Propuesta de circuitos derivados');
   const showPhase = (c.phaseCount||1) > 1;
   const phaseMap = {};
@@ -464,9 +533,10 @@ function resumenLevantamiento(folio, entradas, c){
   }
   (c.derived_proposal||[]).forEach(ci=>{
     const itemsTxt=(ci.tipo==='Contacto especial'||ci.tipo==='Bomba'||ci.tipo==='Contacto específico')?'':` (${ci.items})`;
+    const conn=ci.tipo_conexion? ` • ${ci.tipo_conexion.toUpperCase()}`:'';
     const id = `${ci.key}_${ci.circuito_index}`;
     const faseTxt = showPhase && phaseMap[id] ? ` (F${phaseMap[id]})` : '';
-    lines.push(`• Circuito ${ci.idx}. ${ci.tipo}${itemsTxt}${faseTxt}`);
+    lines.push(`• Circuito ${ci.idx}. ${ci.tipo}${itemsTxt}${conn}${faseTxt}${ci.valido?'':' • INVÁLIDO'}`);
   });
   lines.push('');
 
@@ -489,7 +559,6 @@ function resumenLevantamiento(folio, entradas, c){
       { key:'contactos', label:'Contactos' },
       { key:'contactos_especiales', label:'Contactos especiales' },
       { key:'bombas', label:'Bombas' },
-      // NUEVO: contactos específicos
       { key:'contactos_especificos', label:'Contactos específicos' }
     ];
     mods.forEach(m=>{
@@ -544,29 +613,30 @@ function resumenLevantamiento(folio, entradas, c){
   if(c.Bombas>0){
     lines.push('🚰 Bombas (circuitos individuales)');
     for(let i=0;i<c.Bombas;i++){
-      lines.push(`• Bomba ${i+1}: ${c.Bombas_HP_List[i]} HP | I ≈ ${amp(c.I_bomba_list[i])} | Breaker: ${c.int_bomba_list[i]} A | Conductor: ${c.cal_bomba_list[i]} | VD: ${pct(c.vd_bomba_list[i])}`);
+      lines.push(`• Bomba ${i+1}: ${c.Bombas_HP_List[i]} HP • ${c.bombas_tipos_list?.[i]?.toUpperCase()||'MONO'} | I ≈ ${amp(c.I_bomba_list[i])} | Breaker: ${c.int_bomba_list[i]} A | Conductor: ${c.cal_bomba_list[i]} | VD: ${pct(c.vd_bomba_list[i])}`);
     }
     lines.push('');
   }
 
   // 12) Contactos específicos
   if(c.nContactosEspecificos>0){
-    lines.push('🟧 Contactos específicos (circuitos dedicados por potencia del usuario)');
+    lines.push('🟧 Contactos específicos (circuitos dedicados)');
     for(let i=0;i<c.nContactosEspecificos;i++){
       const W = c.ContactosEspecificos_W_List[i]||0;
-      lines.push(`• Contacto específico ${i+1}: ${W} W | I ≈ ${amp(c.I_csp_list[i])} | Breaker: ${c.int_csp_list[i]} A | Conductor: ${c.cal_csp_list[i]} | VD: ${pct(c.vd_csp_list[i])}`);
+      const tipo = c.ContactosEspecificos_Tipos_List?.[i]?.toUpperCase()||'MONO';
+      lines.push(`• CE ${i+1}: ${W} W • ${tipo} | I ≈ ${amp(c.I_csp_list[i])} | Breaker: ${c.int_csp_list[i]} A | Conductor: ${c.cal_csp_list[i]} | VD: ${pct(c.vd_csp_list[i])}`);
     }
     lines.push('');
   }
 
-  // 13) Conductor de puesta a tierra
-  if(c.ground){
-    lines.push('🟢 Conductor de puesta a tierra');
-    lines.push(`• Calibre: ${c.ground.calibre} | Área: ${c.ground.area_mm2? c.ground.area_mm2.toFixed(2)+' mm²':'—'}`);
+  // Advertencias
+  if(Array.isArray(c.warnings) && c.warnings.length){
+    lines.push('⚠️ Advertencias');
+    c.warnings.forEach(w=> lines.push(`• ${w}`));
     lines.push('');
   }
 
-  // 14) VD total y referencias
+  // VD total y referencias
   const worstVD=Math.max(
     ...(c.vd_focos_list||[]).filter(x=>x!=null),
     ...(c.vd_cont_list||[]).filter(x=>x!=null),
