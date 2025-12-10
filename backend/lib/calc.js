@@ -3,13 +3,41 @@
 const { computeFeederVDPercent } = require('./vd');
 
 /* ===================== CONFIG / CONSTANTES ===================== */
-const VOLTAJE_CALC = 120; // usado solo en algunos textos; las fórmulas nuevas usan bases fijas abajo
+const VOLTAJE_CALC = 120; // solo usado en algunos textos
 const MONO_LIM_kW  = 5;
 const BIFA_LIM_kW  = 10;
 
+/* Ampacidades (Tabla 310.15(B)(16) – Cu THW 60°C simplificada para los calibres usados en la app) */
 const AMPACIDAD = { '14AWG':15,'12AWG':20,'10AWG':30,'8AWG':40,'6AWG':55,'4AWG':70,'2AWG':95 };
-const ZEFF_OHMKM = { '14AWG':8.90,'12AWG':5.60,'10AWG':3.60,'8AWG':2.26,'6AWG':1.51,'4AWG':1.21,'2AWG':0.98 };
-const AREA_CONDUCTOR = { '14AWG':2.08,'12AWG':3.31,'10AWG':15.68,'8AWG':8.37,'6AWG':13.3,'4AWG':21.1,'2AWG':33.6 };
+
+/* Z eficaz (ohm/km) a FP≈0.85, cobre, conduit PVC – Tabla 9
+   IMPORTANTE: estos valores se usan para la caída de tensión de derivados. */
+const ZEFF_OHMKM = {
+  '14AWG': 8.90,
+  '12AWG': 5.60,
+  '10AWG': 3.60,
+  '8AWG' : 2.26,
+  '6AWG' : 1.48,
+  '4AWG' : 0.98,
+  '3AWG' : 0.79,
+  '2AWG' : 0.62,
+  '1AWG' : 0.52,
+  '1/0AWG': 0.43,
+  '2/0AWG': 0.36,
+  '3/0AWG': 0.33,
+  '4/0AWG': 0.30,
+  // tamaños grandes por si en el futuro se usan
+  '250KCMIL': 0.262,
+  '300KCMIL': 0.240,
+  '350KCMIL': 0.222,
+  '400KCMIL': 0.210,
+  '500KCMIL': 0.187,
+  '600KCMIL': 0.171,
+  '750KCMIL': 0.148,
+  '1000KCMIL': 0.128
+};
+
+const AREA_CONDUCTOR = { '14AWG':2.08,'12AWG':3.31,'10AWG':5.26,'8AWG':8.37,'6AWG':13.3,'4AWG':21.1,'2AWG':33.6 };
 const AREA_TUBERIA   = { '1/2"':176,'3/4"':304,'1"':520,'1-1/4"':884,'1-1/2"':1272,'2"':2108,'2-1/2"':3783,'3"':5701 };
 
 const TARGET_VA_x_CIRCUITO_GENERAL = 1500;
@@ -31,7 +59,7 @@ const CRITERIA_URL = 'http://bit.ly/4o4q4Zf';
 
 /* Bases fijas solicitadas */
 const V_MONO_EN = 120;      // En: línea-neutro
-const V_BIFA_EN = 120;      // En para fórmula 2f-3h (DERIVADOS: En=120 V)
+const V_BIFA_EN = 120;      // En para fórmula 2f-3h (derivados y alimentador bifásico)
 const V_TRIFA_EF = 220;     // Ef: línea-línea
 const FP_TRIFA   = 0.86;
 
@@ -49,19 +77,22 @@ function generarFolio(){
 /* Corriente por tipo de conexión (fijo) */
 function corrientePorTipo(P_W, tipo){
   const P = Math.max(0, num(P_W));
-  if(tipo==='bifa') return P / (Math.SQRT2 * 220);
+  if(tipo==='bifa')  return P / (Math.SQRT2 * 220);
   if(tipo==='trifa') return P / (Math.sqrt(3) * V_TRIFA_EF * FP_TRIFA);
   // mono
   return P / V_MONO_EN;
 }
 
-/* VD derivado por tipo de conexión (fijo) */
+/* VD derivado por tipo de conexión (fijo, usando Z de Tabla 9) */
 function vdBranchPorTipo(I, L_m, calibreAWG, tipo){
-  const Z = ZEFF_OHMKM[calibreAWG]; if(!Z || !I || !L_m) return null;
+  const Z = ZEFF_OHMKM[calibreAWG];
+  if(!Z || !I || !L_m) return null;
+
   const L = Math.max(0, num(L_m));
   const Ieff = Math.max(0, num(I));
+
   if(tipo==='bifa'){
-    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=120 (DERIVADOS)
+    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=120
     return (Ieff * L * Z) / (V_BIFA_EN * 10);
   }
   if(tipo==='trifa'){
@@ -119,7 +150,7 @@ function selectGroundCalibre(protA){
   const b=nearestStandardBreaker(protA||MIN_BREAKER_A);
   const map={
     15:{awg:'14AWG',mm2:2.08},20:{awg:'12AWG',mm2:3.31},25:{awg:'12AWG',mm2:3.31},
-    30:{awg:'10AWG',mm2:15.68},35:{awg:'10AWG',mm2:15.68},40:{awg:'10AWG',mm2:15.68},
+    30:{awg:'10AWG',mm2:5.26},35:{awg:'10AWG',mm2:5.26},40:{awg:'8AWG',mm2:8.37},
     50:{awg:'8AWG',mm2:8.37},60:{awg:'6AWG',mm2:13.3},80:{awg:'4AWG',mm2:21.1},
     100:{awg:'4AWG',mm2:21.1},125:{awg:'2AWG',mm2:33.6},150:{awg:'2AWG',mm2:33.6},
     175:{awg:'2AWG',mm2:33.6},200:{awg:'2AWG',mm2:33.6}
@@ -273,10 +304,22 @@ function calcularSistema(p, forcedMode){
   const VA_demanda_total = VA_instalada_total <= 3000 ? VA_instalada_total : 3000 + (VA_instalada_total - 3000)*0.35;
   const kW = VA_demanda_total/1000;
 
-  const I_alim=VA_demanda_total/V_MONO_EN; // alimentador usa 120 V base para texto; vdFeeder calcula según sistema
+  // Corriente del alimentador por sistema
+  const P_alim = VA_demanda_total;
+  let I_alim;
+  if (sistema === 'Monofásico') {
+    I_alim = P_alim / V_MONO_EN;
+  } else if (sistema === 'Bifásico') {
+    I_alim = P_alim / (Math.SQRT2 * 220);
+  } else if (sistema === 'Trifásico') {
+    I_alim = P_alim / (Math.sqrt(3) * V_TRIFA_EF * FP_TRIFA);
+  } else {
+    I_alim = P_alim / V_MONO_EN;
+  }
+
   const cal_alim=seleccionarCalibre(I_alim);
 
-  // VD alimentador
+  // VD alimentador (usa fórmula según sistema en vd.js)
   const vdFeeder = computeFeederVDPercent({ sistema, I: I_alim, L_m: L_alim_m, calibre: cal_alim });
   const vd_alim = vdFeeder.vd_pct;
   const vd_Vbase = vdFeeder.Vbase;
@@ -286,7 +329,7 @@ function calcularSistema(p, forcedMode){
   const prot_candidato=nearestStandardBreaker(I_alim);
   const proteccion=Math.max(MIN_BREAKER_A, Math.min(prot_candidato, nearestStandardBreaker(AMPACIDAD[cal_alim]||prot_candidato)));
 
-  /* Derivados estándar (mono por diseño) */
+  /* Derivados estándar (mono por diseño para focos/contactos/especiales) */
   const nFocos=circuitsFor(Focos,MAX_FOCOS_POR_CIRCUITO,VA_focos);
   const count_focos_list=splitCount(Focos,nFocos);
   const I_focos_list=count_focos_list.map(cnt=> corrientePorTipo(cnt*PotFoco, 'mono'));
@@ -542,7 +585,7 @@ function resumenLevantamiento(folio, entradas, c){
 
   // 6) Alimentador
   lines.push('⚡ Alimentador');
-  lines.push(`• I_alimentador @120 V: ${amp(c.I_alim)}`);
+  lines.push(`• I_alimentador: ${amp(c.I_alim)}`);
   lines.push(`• Conductor: Cu THW 60°C ${c.cal_alim} | Interruptor: ${c.proteccion} A`);
   if(c.vd_alim!=null) lines.push(`• VD alimentador: ${pct(c.vd_alim)} (lim 2%)`);
   if(c.conduit_per_module && c.conduit_per_module.alimentador){
