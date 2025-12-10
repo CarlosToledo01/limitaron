@@ -31,7 +31,7 @@ const CRITERIA_URL = 'http://bit.ly/4o4q4Zf';
 
 /* Bases fijas solicitadas */
 const V_MONO_EN = 120;      // En: línea-neutro
-const V_BIFA_EN = 220;      // En para fórmula 2f-3h
+const V_BIFA_EN = 120;      // En para fórmula 2f-3h (DERIVADOS: En=120 V)
 const V_TRIFA_EF = 220;     // Ef: línea-línea
 const FP_TRIFA   = 0.86;
 
@@ -61,7 +61,7 @@ function vdBranchPorTipo(I, L_m, calibreAWG, tipo){
   const L = Math.max(0, num(L_m));
   const Ieff = Math.max(0, num(I));
   if(tipo==='bifa'){
-    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=220
+    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=120 (DERIVADOS)
     return (Ieff * L * Z) / (V_BIFA_EN * 10);
   }
   if(tipo==='trifa'){
