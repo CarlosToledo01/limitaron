@@ -10,8 +10,7 @@ const BIFA_LIM_kW  = 10;
 /* Ampacidades (Tabla 310.15(B)(16) – Cu THW 60°C simplificada para los calibres usados en la app) */
 const AMPACIDAD = { '14AWG':15,'12AWG':20,'10AWG':30,'8AWG':40,'6AWG':55,'4AWG':70,'2AWG':95 };
 
-/* Z eficaz (ohm/km) a FP≈0.85, cobre, conduit PVC – Tabla 9
-   IMPORTANTE: estos valores se usan para la caída de tensión de derivados. */
+/* Z eficaz (ohm/km) a FP≈0.85, cobre, conduit PVC – Tabla 9 */
 const ZEFF_OHMKM = {
   '14AWG': 8.90,
   '12AWG': 5.60,
@@ -26,7 +25,6 @@ const ZEFF_OHMKM = {
   '2/0AWG': 0.36,
   '3/0AWG': 0.33,
   '4/0AWG': 0.30,
-  // tamaños grandes por si en el futuro se usan
   '250KCMIL': 0.262,
   '300KCMIL': 0.240,
   '350KCMIL': 0.222,
@@ -58,9 +56,9 @@ const MIN_BREAKER_A = 15;
 const CRITERIA_URL = 'http://bit.ly/4o4q4Zf';
 
 /* Bases fijas solicitadas */
-const V_MONO_EN = 120;      // En: línea-neutro
-const V_BIFA_EN = 120;      // En para fórmula 2f-3h (derivados y alimentador bifásico)
-const V_TRIFA_EF = 220;     // Ef: línea-línea
+const V_MONO_EN = 120;
+const V_BIFA_EN = 120;
+const V_TRIFA_EF = 220;
 const FP_TRIFA   = 0.86;
 
 /* ===================== UTILIDADES ===================== */
@@ -74,16 +72,15 @@ function generarFolio(){
   return `LIM-${letras}-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}-${pad(d.getMilliseconds(),3)}`;
 }
 
-/* Corriente por tipo de conexión (fijo) */
+/* Corriente por tipo de conexión */
 function corrientePorTipo(P_W, tipo){
   const P = Math.max(0, num(P_W));
   if(tipo==='bifa')  return P / (Math.SQRT2 * 220);
   if(tipo==='trifa') return P / (Math.sqrt(3) * V_TRIFA_EF * FP_TRIFA);
-  // mono
   return P / V_MONO_EN;
 }
 
-/* VD derivado por tipo de conexión (fijo, usando Z de Tabla 9) */
+/* VD derivado por tipo de conexión (Tabla 9) */
 function vdBranchPorTipo(I, L_m, calibreAWG, tipo){
   const Z = ZEFF_OHMKM[calibreAWG];
   if(!Z || !I || !L_m) return null;
@@ -92,14 +89,11 @@ function vdBranchPorTipo(I, L_m, calibreAWG, tipo){
   const Ieff = Math.max(0, num(I));
 
   if(tipo==='bifa'){
-    // 2f-3h: %e = (I * L * Z) / (En * 10) con En=120
     return (Ieff * L * Z) / (V_BIFA_EN * 10);
   }
   if(tipo==='trifa'){
-    // 3f-4h: %e = (√3 * I * L * Z) / (Ef * 10) con Ef=220
     return (Math.sqrt(3) * Ieff * L * Z) / (V_TRIFA_EF * 10);
   }
-  // 1f-2h: %e = (2 * I * L * Z) / (En * 10) con En=120
   return (2 * Ieff * L * Z) / (V_MONO_EN * 10);
 }
 
@@ -238,7 +232,7 @@ function applyManualPhaseAssignments(phaseCount, items, manual){
   return { phases, totals, desbalance_pct:Number(desb.toFixed(2)), assignment };
 }
 
-/* ===================== CÁLCULO ===================== */
+/* ===================== CÁLCULO PRINCIPAL ===================== */
 function calcularSistema(p, forcedMode){
   const Focos=num(p.Focos);
   const PotFoco=num(p.PotFoco_W);
@@ -248,7 +242,7 @@ function calcularSistema(p, forcedMode){
   if(Bombas>0 && bombasHP.length===0) bombasHP=Array.from({length:Bombas},()=>1);
   if(bombasHP.length!==Bombas){ bombasHP=bombasHP.slice(0,Bombas); while(bombasHP.length<Bombas) bombasHP.push(1); }
 
-  // Tipos conexión de bombas
+  // Tipos de bombas
   let bombasTipos = Array.isArray(p.Bombas_Tipos_List)? p.Bombas_Tipos_List.map(x=> String(x||'mono').toLowerCase()) : [];
   if(bombasTipos.length!==Bombas){ bombasTipos=bombasTipos.slice(0,Bombas); while(bombasTipos.length<Bombas) bombasTipos.push('mono'); }
 
@@ -268,7 +262,7 @@ function calcularSistema(p, forcedMode){
 
   const L_alim_m=num(p.largo_alim_m)||LONG_ALIMENTADOR_m_DEF;
 
-  // Cálculo VA base y recomendación preliminar
+  // Demanda previa
   const VA_focos=Focos*PotFoco;
   const VA_contactos=Contactos*POT_CONTACTO_VA;
   const VA_bombas_total=sum(bombasHP)*746;
@@ -286,7 +280,6 @@ function calcularSistema(p, forcedMode){
   else if(forcedMode==='trifa') sistema='Trifásico';
   else sistema=recomendado;
 
-  // Validación por sistema
   function isTipoValido(tipo, sistema){
     if(sistema==='Monofásico') return tipo==='mono';
     if(sistema==='Bifásico') return (tipo==='mono' || tipo==='bifa');
@@ -296,7 +289,6 @@ function calcularSistema(p, forcedMode){
   const bombasValidMask = bombasTipos.map(t=> isTipoValido(t, sistema));
   const cspValidMask = ContactosEspecificos_Tipos_List.map(t=> isTipoValido(t, sistema));
 
-  // Demanda: excluir cargas inválidas
   const VA_bombas_valid = bombasHP.reduce((acc,hp,i)=> acc + (bombasValidMask[i]? hp*746 : 0), 0);
   const VA_csp_valid    = ContactosEspecificos_W_List.reduce((acc,W,i)=> acc + (cspValidMask[i]? W : 0), 0);
 
@@ -304,7 +296,7 @@ function calcularSistema(p, forcedMode){
   const VA_demanda_total = VA_instalada_total <= 3000 ? VA_instalada_total : 3000 + (VA_instalada_total - 3000)*0.35;
   const kW = VA_demanda_total/1000;
 
-  // Corriente del alimentador por sistema
+  // I alimentador
   const P_alim = VA_demanda_total;
   let I_alim;
   if (sistema === 'Monofásico') {
@@ -319,7 +311,7 @@ function calcularSistema(p, forcedMode){
 
   const cal_alim=seleccionarCalibre(I_alim);
 
-  // VD alimentador (usa fórmula según sistema en vd.js)
+  // VD alimentador
   const vdFeeder = computeFeederVDPercent({ sistema, I: I_alim, L_m: L_alim_m, calibre: cal_alim });
   const vd_alim = vdFeeder.vd_pct;
   const vd_Vbase = vdFeeder.Vbase;
@@ -329,7 +321,7 @@ function calcularSistema(p, forcedMode){
   const prot_candidato=nearestStandardBreaker(I_alim);
   const proteccion=Math.max(MIN_BREAKER_A, Math.min(prot_candidato, nearestStandardBreaker(AMPACIDAD[cal_alim]||prot_candidato)));
 
-  /* Derivados estándar (mono por diseño para focos/contactos/especiales) */
+  /* Derivados estándar */
   const nFocos=circuitsFor(Focos,MAX_FOCOS_POR_CIRCUITO,VA_focos);
   const count_focos_list=splitCount(Focos,nFocos);
   const I_focos_list=count_focos_list.map(cnt=> corrientePorTipo(cnt*PotFoco, 'mono'));
@@ -349,7 +341,7 @@ function calcularSistema(p, forcedMode){
   const cal_especial= I_circ_especial>0? seleccionarCalibre(I_circ_especial):null;
   const int_contactos_especiales= nContactosEspeciales>0? branchBreakerByCurrent(I_circ_especial):0;
 
-  /* Bombas (I por tipo, VD por tipo) */
+  /* Bombas */
   const nBombas=bombasHP.length;
   const P_bombas_W = bombasHP.map(hp=> num(hp)*746);
   const I_bomba_list = P_bombas_W.map((P,i)=> corrientePorTipo(P, bombasTipos[i]||'mono'));
@@ -358,7 +350,7 @@ function calcularSistema(p, forcedMode){
   const L_bombas=toLengthsArray(p.L_bombas,nBombas,LONG_DERIVADOS_m_DEF);
   const vd_bomba_list=I_bomba_list.map((I,i)=> vdBranchPorTipo(I, L_bombas[i], cal_bomba_list[i], bombasTipos[i]||'mono'));
 
-  /* Longitudes y VD por grupos mono */
+  /* Longitudes y VD por grupos */
   const L_focos=toLengthsArray(p.L_focos,nFocos,LONG_DERIVADOS_m_DEF);
   const L_cont =toLengthsArray(p.L_contactos,nContactos,LONG_DERIVADOS_m_DEF);
   const L_esp  =toLengthsArray(p.L_especiales,nContactosEspeciales,LONG_DERIVADOS_m_DEF);
@@ -373,7 +365,7 @@ function calcularSistema(p, forcedMode){
     ? Array.from({length:nContactosEspeciales},(_,i)=> vdBranchPorTipo(I_circ_especial, L_esp[i], cal_especial, 'mono'))
     : [];
 
-  /* Contactos específicos (I y VD por tipo) */
+  /* Contactos específicos */
   const nContactosEspecificos = ContactosEspecificos_W_List.length;
   const I_csp_list = ContactosEspecificos_W_List.map((W,i)=> corrientePorTipo(W, ContactosEspecificos_Tipos_List[i]||'mono'));
   const cal_csp_list = I_csp_list.map(I => seleccionarCalibre(I||0.0001));
@@ -386,7 +378,7 @@ function calcularSistema(p, forcedMode){
   const vd_especial=vd_especial_list.length? avg(vd_especial_list):null;
   const vd_csp = vd_csp_list.length? avg(vd_csp_list):null;
 
-  /* Propuesta derivada (incluye tipo_conexion y validez) */
+  /* Propuesta derivada */
   const derived_proposal=[];
   let idx=1;
   for(let i=0;i<nFocos;i++){
@@ -417,7 +409,7 @@ function calcularSistema(p, forcedMode){
     derived_proposal.push({ idx:idx++, tipo:'Contacto específico', key:'contactosEspecificos', circuito_index:i, items:1, VA:VAci, I:I_csp_list[i]||0, cal:cal_csp_list[i]||null, breaker:int_csp_list[i]||0, L_m:L_csp[i]||LONG_DERIVADOS_m_DEF, vd_pct: vd_csp_list[i]??null, tipo_conexion:tipo, valido });
   }
 
-  /* Balance habilitado y reglas */
+  /* Balance habilitado */
   const balanceEnabled =
     (forcedMode==='auto' && (recomendado==='Bifásico' || recomendado==='Trifásico')) ||
     forcedMode==='bifa' || forcedMode==='trifa';
@@ -468,7 +460,6 @@ function calcularSistema(p, forcedMode){
     VA: W, I: I_csp_list[i], breaker: int_csp_list[i], cal: cal_csp_list[i], tipo_conexion: ContactosEspecificos_Tipos_List[i]||'mono', valido: cspValidMask[i]
   }));
 
-  /* Advertencias por cargas inválidas */
   const warnings=[];
   if(sistema==='Monofásico'){
     if(bombasValidMask.some(v=>!v)) warnings.push('No es posible conectar bombas bifásicas/trifásicas en sistema monofásico. Estas cargas fueron excluidas.');
@@ -528,7 +519,7 @@ function calcularSistema(p, forcedMode){
   };
 }
 
-/* ===================== RESUMEN TEXTO (ORDEN NUEVO) ===================== */
+/* ===================== RESUMEN TEXTO (COMPLETO) ===================== */
 function resumenLevantamiento(folio, entradas, c){
   const pct = (v,d=2)=> v==null?'—':`${Number(v).toFixed(d)}%`;
   const amp = v => `${Number(v||0).toFixed(2)} A`;
@@ -546,12 +537,25 @@ function resumenLevantamiento(folio, entradas, c){
   lines.push(`• Longitud alimentador: ${c.largo_alim_m} m  • Longitud derivado (default): ${c.largo_der_m} m`);
   lines.push('');
 
-  // 2) Tipo de instalación
-  lines.push('⚡ Tipo de instalación:');
-  lines.push(`${c.sistema} (recomendado: ${c.recomendado})`);
+  // 2) Tipo de acometida según lineamientos de CFE 
+  const acometidaMsg = (() => {
+    if (c.sistema === 'Monofásico') {
+      return 'Acometida monofásica (CFE EM-BT1) consultar: https://bit.ly/4pXd2yA para especificaciones según tus necesidades';
+    }
+    if (c.sistema === 'Bifásico') {
+      return 'Acometida bifásica (CFE EM-BT2) consultar: http://bit.ly/4pXuanY para especificaciones según tus necesidades';
+    }
+    if (c.sistema === 'Trifásico') {
+      return 'Acometida trifásica (CFE EM-BT3) consultar: http://bit.ly/4gVrHX1 para especificaciones según tus necesidades';
+    }
+    return `${c.sistema} (recomendado: ${c.recomendado})`;
+  })();
+
+  lines.push('⚡ Tipo de acometida según lineamientos de CFE:');
+  lines.push(acometidaMsg);
   lines.push('');
 
-  // 3) Demanda
+  // 3) Demanda aproximada
   lines.push('📊 Demanda aproximada');
   lines.push(`• Carga instalada total (válida): ${va(c.VA_instalada_total)}`);
   lines.push(`• Demanda máxima: ${va(c.VA_demanda_total)} (${(c.kW||0).toFixed(3)} kW)`);
@@ -672,14 +676,14 @@ function resumenLevantamiento(folio, entradas, c){
     lines.push('');
   }
 
-  // Advertencias
+  // 13) Advertencias
   if(Array.isArray(c.warnings) && c.warnings.length){
     lines.push('⚠️ Advertencias');
     c.warnings.forEach(w=> lines.push(`• ${w}`));
     lines.push('');
   }
 
-  // VD total y referencias
+  // 14) VD total y referencias
   const worstVD=Math.max(
     ...(c.vd_focos_list||[]).filter(x=>x!=null),
     ...(c.vd_cont_list||[]).filter(x=>x!=null),

@@ -45,7 +45,6 @@
       border-radius: 1.1rem;
     }
 
-    /* ---------- Form layout ---------- */
     form#calcForm { display: flex; flex-direction: column; gap: 1.25rem; }
     .section { display: flex; flex-direction: column; gap: .9rem; }
     .section h3 {
@@ -88,7 +87,6 @@
     }
     input:focus, select:focus { border-color: #3b82f6; background: #132033; }
 
-    /* Acciones */
     .actions { display: flex; flex-direction: column; gap: .75rem; margin-top: .25rem; }
     .actions .row { display: flex; gap: .65rem; flex-wrap: wrap; }
     button {
@@ -107,7 +105,6 @@
     button.small { padding: .5rem .8rem; font-size: .78rem; }
     button:disabled { opacity: .55; cursor: not-allowed; }
 
-    /* Tabs & panels */
     .tabs { display: flex; gap: .4rem; border-bottom: 1px solid var(--border); margin-bottom: .95rem; flex-wrap: wrap; }
     .tab {
       background: #0b1324;
@@ -144,26 +141,22 @@
     }
 
     .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
-    .pill { background: var(--pill); padding: .35rem .75rem; border-radius: 1.2rem; font-size: .6rem; font-weight: 700; letter-spacing: .05em; }
-    .ok { color: #22c55e; } .error { color: var(--danger); } .warn { color: var(--warn); }
+    .pill { background: #1e293b; padding: .35rem .75rem; border-radius: 1.2rem; font-size: .6rem; font-weight: 700; letter-spacing: .05em; }
+    .ok { color: #22c55e; } .error { color: #dc2626; } .warn { color: #f59e0b; }
     .muted { color: #94a3b8; font-size: .8rem; }
 
-    /* ---------- Unifilar (SVG) ---------- */
     .sld-wrap {
       background: #ffffff;
       border: 1px solid #d1d5db;
       padding: .9rem;
       border-radius: .8rem;
       overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-x pan-y;
     }
-    .sld-wrap svg { width: 100% !important; height: auto !important; display: block; }
+    .sld-wrap svg { width: 100%; height: auto; display: block; }
 
     .toolbar { display: flex; gap: .6rem; flex-wrap: wrap; margin: .6rem 0 .85rem; }
     .toolbar button { background: #1e2533; color: #e2e8f0; }
 
-    /* ---------- Ajustes móviles ---------- */
     @media (max-width:640px) {
       .wrap { padding: 0 .8rem; }
       h1 { font-size: clamp(1.6rem, 7vw, 2.2rem); }
@@ -174,18 +167,10 @@
       table { font-size: .76rem; }
     }
 
-    /* Scroll appearance */
-    ::-webkit-scrollbar { width: 10px; height: 10px; }
-    ::-webkit-scrollbar-track { background: #0b1324; }
-    ::-webkit-scrollbar-thumb { background: #1f2b3a; border-radius: 6px; }
-    ::-webkit-scrollbar-thumb:hover { background: #304256; }
-
-    /* Repetidores dinámicos */
     .repeat-list { display: flex; flex-direction: column; gap: .5rem; }
     .repeat-item { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; align-items: center; }
     .repeat-item label { font-size: .75rem; text-transform: none; letter-spacing: .02em; color: #cbd5e1; }
 
-    /* Error de entrada */
     .error-box {
       display: none;
       background: #2a1010;
@@ -207,7 +192,6 @@
       <!-- ENTRADA -->
       <div class="card">
         <form id="calcForm" onsubmit="return false;">
-          <!-- Cargas generales -->
           <div class="section">
             <h3>Cargas generales</h3>
             <div class="field-row">
@@ -232,7 +216,6 @@
             </div>
           </div>
 
-          <!-- Bombas -->
           <div class="section">
             <h3>Bombas</h3>
             <div class="field-row">
@@ -251,7 +234,6 @@
             </div>
           </div>
 
-          <!-- Contactos específicos -->
           <div class="section">
             <h3>Contactos específicos</h3>
             <div class="field-row">
@@ -270,7 +252,6 @@
             </div>
           </div>
 
-          <!-- Parámetros -->
           <div class="section">
             <h3>Parámetros del sistema</h3>
             <div class="field-row">
@@ -291,7 +272,6 @@
             <div class="muted">Longitudes individuales se ajustan en “Propuesta”.</div>
           </div>
 
-          <!-- Error de entrada -->
           <div id="entryError" class="error-box"></div>
 
           <div class="actions">
@@ -300,7 +280,6 @@
               <button type="button" id="btnDemo" class="secondary">Demo rápida</button>
             </div>
             <div class="row">
-              <button type="button" id="btnRecalc" class="secondary">Recalcular con longitudes</button>
               <button type="button" id="btnCopy" class="secondary">Copiar resumen</button>
             </div>
           </div>
@@ -318,7 +297,6 @@
           <div class="pill" id="statusRight">—</div>
         </div>
 
-        <!-- Propuesta -->
         <div class="tab-panel active" id="panel-proposal">
           <div class="panel-header">
             <h3 style="margin:0;">Propuesta de circuitos</h3>
@@ -327,13 +305,12 @@
           <div id="proposal">Realiza un cálculo para ver la propuesta…</div>
         </div>
 
-        <!-- Balance -->
         <div class="tab-panel" id="panel-balance">
           <div class="panel-header">
             <h3 style="margin:0;">Balance de cargas</h3>
             <span id="statusBalance" class="pill">—</span>
           </div>
-          <div id="balanceSummary" class="muted">Se mostrará cuando proceda.</div>
+          <div id="balanceSummary" class="muted">Se mostrará cuando el sistema sea bifásico o trifásico.</div>
           <div id="balanceTableWrap" style="margin-top:.6rem; overflow:auto; display:none;">
             <table id="balanceTable">
               <thead>
@@ -351,7 +328,6 @@
           </div>
         </div>
 
-        <!-- Resumen -->
         <div class="tab-panel" id="panel-resumen">
           <div class="panel-header">
             <h3 style="margin:0;">Resumen</h3>
@@ -360,7 +336,6 @@
           <pre id="resumen">—</pre>
         </div>
 
-        <!-- Estructurado -->
         <div class="tab-panel" id="panel-estructurado">
           <div class="panel-header">
             <h3 style="margin:0;">Resumen estructurado</h3>
@@ -369,7 +344,6 @@
           <div id="structured" class="muted">Se mostrará tras recalcular.</div>
         </div>
 
-        <!-- Unifilar -->
         <div class="tab-panel" id="panel-unifilar">
           <div class="panel-header">
             <h3 style="margin:0;">Diagrama unifilar (SVG)</h3>
@@ -382,13 +356,12 @@
             <button type="button" id="btnDownloadSLDPNG" class="secondary small" disabled>PNG</button>
           </div>
           <div id="sldContainer" class="sld-wrap">—</div>
-          <div class="muted" style="margin-top:.6rem;">VD>3% se marca en rojo; desbalance >5% en ámbar.</div>
+          <div class="muted" style="margin-top:.6rem;">VD&gt;3% se marca en rojo; desbalance &gt;5% en ámbar.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Generador SVG Unifilar -->
   <script src="./sld.js"></script>
 
   <script>
@@ -402,7 +375,7 @@
       unifilar: document.getElementById('panel-unifilar')
     };
     function setActiveTab(id) {
-      const t = tabsEl.querySelector(`.tab[data-tab="${id}"]`);
+      const t = tabsEl.querySelector('.tab[data-tab="' + id + '"]');
       if (!t) return;
       tabsEl.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el === t));
       Object.entries(panels).forEach(([k, p]) => p.classList.toggle('active', k === id));
@@ -417,10 +390,15 @@
     const form = document.getElementById('calcForm');
     const btnCalc = document.getElementById('btnCalc');
     const btnDemo = document.getElementById('btnDemo');
-    const btnRecalc = document.getElementById('btnRecalc');
     const btnCopy = document.getElementById('btnCopy');
     const btnApplyBalance = document.getElementById('btnApplyBalance');
     const btnAutoBalance = document.getElementById('btnAutoBalance');
+
+    const btnRecalc = document.createElement('button');
+    btnRecalc.type = 'button';
+    btnRecalc.id = 'btnRecalc';
+    btnRecalc.className = 'secondary';
+    btnRecalc.textContent = 'Recalcular con longitudes';
 
     const statusRight = document.getElementById('statusRight');
     const statusProp = document.getElementById('statusProp');
@@ -446,8 +424,8 @@
 
     const DEFAULT_L_DERIV = 10;
 
-    /* ===== Helpers ===== */
-    const parseNumList = s => (!s || !s.trim()) ? [] : s.split(',').map(x => Number(String(x).trim().replace(',', '.'))).filter(Number.isFinite);
+    const parseNumList = s => (!s || !s.trim()) ? [] :
+      s.split(',').map(x => Number(String(x).trim().replace(',', '.'))).filter(Number.isFinite);
     const safeInt = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
     const clampArrayLen = (arr, len, fillVal) => {
       arr = Array.isArray(arr) ? arr.slice(0, len) : [];
@@ -460,15 +438,12 @@
       return ['mono'];
     };
 
-    /* ===== UI dinámico: repetidores ===== */
     const inpBombas = document.getElementById('inpBombas');
     const inpBombasHP = document.getElementById('inpBombasHP');
     const bombasRepeater = document.getElementById('bombasRepeater');
-
     const inpCspCant = document.getElementById('inpCspCant');
     const inpCspW = document.getElementById('inpCspW');
     const cspRepeater = document.getElementById('cspRepeater');
-
     const forcedModeSel = document.getElementById('forcedMode');
 
     function currentSystem() {
@@ -488,18 +463,16 @@
 
       bombasRepeater.innerHTML = '';
       for (let i = 0; i < n; i++) {
-        const selId = `BombaTipo_${i}`;
         const hpVal = hpList[i] ?? 1;
         const prev = existingValues[i] || 'mono';
-        const optsHTML = tiposPerm.map(t => `<option value="${t}" ${t === prev ? 'selected' : ''}>${t.toUpperCase()}</option>`).join('');
-        bombasRepeater.insertAdjacentHTML('beforeend', `
-          <div class="repeat-item">
-            <label>Bomba ${i + 1} • HP: ${hpVal}</label>
-            <select name="${selId}" data-index="${i}" aria-label="Tipo conexión bomba ${i + 1}">
-              ${optsHTML}
-            </select>
-          </div>
-        `);
+        const optsHTML = tiposPerm.map(t =>
+          '<option value="' + t + '"' + (t === prev ? ' selected' : '') + '>' + t.toUpperCase() + '</option>'
+        ).join('');
+        bombasRepeater.insertAdjacentHTML('beforeend',
+          '<div class="repeat-item">' +
+            '<label>Bomba ' + (i + 1) + ' • HP: ' + hpVal + '</label>' +
+            '<select name="BombaTipo_' + i + '">' + optsHTML + '</select>' +
+          '</div>');
       }
     }
 
@@ -512,24 +485,23 @@
 
       cspRepeater.innerHTML = '';
       for (let i = 0; i < n; i++) {
-        const selId = `CspTipo_${i}`;
         const wVal = wList[i] ?? 0;
         const prev = existingValues[i] || 'mono';
-        const optsHTML = tiposPerm.map(t => `<option value="${t}" ${t === prev ? 'selected' : ''}>${t.toUpperCase()}</option>`).join('');
-        cspRepeater.insertAdjacentHTML('beforeend', `
-          <div class="repeat-item">
-            <label>CE ${i + 1} • ${wVal} W</label>
-            <select name="${selId}" data-index="${i}" aria-label="Tipo conexión CE ${i + 1}">
-              ${optsHTML}
-            </select>
-          </div>
-        `);
+        const optsHTML = tiposPerm.map(t =>
+          '<option value="' + t + '"' + (t === prev ? ' selected' : '') + '>' + t.toUpperCase() + '</option>'
+        ).join('');
+        cspRepeater.insertAdjacentHTML('beforeend',
+          '<div class="repeat-item">' +
+            '<label>CE ' + (i + 1) + ' • ' + wVal + ' W</label>' +
+            '<select name="CspTipo_' + i + '">' + optsHTML + '</select>' +
+          '</div>');
       }
     }
 
     function enforceSelectorsBySystem() {
       const sistema = currentSystem();
       const tiposPerm = tipoOptionsBySystem(sistema);
+
       bombasRepeater.querySelectorAll('select[name^="BombaTipo_"]').forEach(sel => {
         Array.from(sel.options).forEach(opt => opt.disabled = !tiposPerm.includes(opt.value));
         if (!tiposPerm.includes(sel.value)) sel.value = tiposPerm[0];
@@ -546,27 +518,25 @@
     inpCspW.addEventListener('input', () => { renderCspRepeater(); enforceSelectorsBySystem(); });
     forcedModeSel.addEventListener('change', () => { renderBombasRepeater(); renderCspRepeater(); enforceSelectorsBySystem(); });
 
-    // Inicial
     renderBombasRepeater();
     renderCspRepeater();
     enforceSelectorsBySystem();
 
-    /* ===== Payload ===== */
     function gatherBasePayload() {
       const fd = new FormData(form);
 
-      // CE: cantidad, potencias y tipos (desde repetidor)
       const cspCant = Number(fd.get('ContactosEspecificos_Cant') || 0);
       let cspWList = parseNumList(fd.get('ContactosEspecificos_W_List'));
       cspWList = clampArrayLen(cspWList, cspCant, 0);
-      const cspTipos = Array.from(cspRepeater.querySelectorAll('select[name^="CspTipo_"]')).map(sel => sel.value || 'mono');
+      const cspTipos = Array.from(cspRepeater.querySelectorAll('select[name^="CspTipo_"]'))
+        .map(sel => sel.value || 'mono');
       const cspTiposClamped = clampArrayLen(cspTipos, cspCant, 'mono');
 
-      // Bombas: unidades, HP y tipos (desde repetidor)
       const bombas = Number(fd.get('Bombas') || 0);
       let bombasHP = parseNumList(fd.get('Bombas_HP_List'));
       bombasHP = clampArrayLen(bombasHP, bombas, 1);
-      const bombasTipos = Array.from(bombasRepeater.querySelectorAll('select[name^="BombaTipo_"]')).map(sel => sel.value || 'mono');
+      const bombasTipos = Array.from(bombasRepeater.querySelectorAll('select[name^="BombaTipo_"]'))
+        .map(sel => sel.value || 'mono');
       const bombasTiposClamped = clampArrayLen(bombasTipos, bombas, 'mono');
 
       return {
@@ -589,7 +559,6 @@
       };
     }
 
-    // Validación previa (UI)
     function validateTypesAgainstSystem() {
       entryError.classList.remove('show');
       entryError.textContent = '';
@@ -598,56 +567,80 @@
       const invalids = [];
 
       bombasRepeater.querySelectorAll('select[name^="BombaTipo_"]').forEach((sel, i) => {
-        if (!tiposPerm.includes(sel.value)) invalids.push(`Bomba ${i + 1}: tipo ${sel.value.toUpperCase()} inválido para sistema ${sistema}.`);
+        if (!tiposPerm.includes(sel.value)) {
+          invalids.push('Bomba ' + (i + 1) + ': tipo ' + sel.value.toUpperCase() +
+                       ' inválido para sistema ' + sistema + '.');
+        }
       });
       cspRepeater.querySelectorAll('select[name^="CspTipo_"]').forEach((sel, i) => {
-        if (!tiposPerm.includes(sel.value)) invalids.push(`CE ${i + 1}: tipo ${sel.value.toUpperCase()} inválido para sistema ${sistema}.`);
+        if (!tiposPerm.includes(sel.value)) {
+          invalids.push('CE ' + (i + 1) + ': tipo ' + sel.value.toUpperCase() +
+                       ' inválido para sistema ' + sistema + '.');
+        }
       });
 
       if (invalids.length) {
-        const msg = (sistema === 'Monofásico')
-          ? 'Sistema MONOFÁSICO: no puede conectar cargas BIFÁSICAS ni TRIFÁSICAS.'
-          : (sistema === 'Bifásico')
-            ? 'Sistema BIFÁSICO: no puede conectar cargas TRIFÁSICAS.'
-            : '';
-        entryError.innerHTML = `<strong>${msg}</strong><br>${invalids.join('<br>')}`;
+        let msg = '';
+        if (sistema === 'Monofásico') {
+          msg = 'Sistema MONOFÁSICO: no puede conectar cargas BIFÁSICAS ni TRIFÁSICAS.';
+        } else if (sistema === 'Bifásico') {
+          msg = 'Sistema BIFÁSICO: no puede conectar cargas TRIFÁSICAS.';
+        }
+        entryError.innerHTML = '<strong>' + msg + '</strong><br>' + invalids.join('<br>');
         entryError.classList.add('show');
         return false;
       }
       return true;
     }
 
-    // Post-validación basada en resultado del backend (recomendado/efectivo)
     function validateResultAndBlockUI(data, payload) {
-      const sys = data?.sistema?.sistema || '';
+      const sys = data && data.sistema && data.sistema.sistema || '';
       const sistema = String(sys);
       const tiposPerm = tipoOptionsBySystem(sistema);
 
-      // Recopilar tipos elegidos por el usuario
-      const bombasTipos = Array.isArray(payload?.Bombas_Tipos_List) ? payload.Bombas_Tipos_List : [];
-      const cspTipos = Array.isArray(payload?.ContactosEspecificos_Tipos_List) ? payload.ContactosEspecificos_Tipos_List : [];
+      const bombasTipos = Array.isArray(payload && payload.Bombas_Tipos_List)
+        ? payload.Bombas_Tipos_List : [];
+      const cspTipos = Array.isArray(payload && payload.ContactosEspecificos_Tipos_List)
+        ? payload.ContactosEspecificos_Tipos_List : [];
 
       const invalids = [];
-      bombasTipos.forEach((t,i)=> { if (!tiposPerm.includes(t)) invalids.push(`Bomba ${i+1}: tipo ${t.toUpperCase()} inválido para sistema ${sistema}.`);});
-      cspTipos.forEach((t,i)=> { if (!tiposPerm.includes(t)) invalids.push(`CE ${i+1}: tipo ${t.toUpperCase()} inválido para sistema ${sistema}.`);});
+      bombasTipos.forEach((t, i) => {
+        if (!tiposPerm.includes(t)) {
+          invalids.push('Bomba ' + (i + 1) + ': tipo ' + t.toUpperCase() +
+                       ' inválido para sistema ' + sistema + '.');
+        }
+      });
+      cspTipos.forEach((t, i) => {
+        if (!tiposPerm.includes(t)) {
+          invalids.push('CE ' + (i + 1) + ': tipo ' + t.toUpperCase() +
+                       ' inválido para sistema ' + sistema + '.');
+        }
+      });
 
-      // También revisar derived_proposal por si el backend marcó valido=false
-      (data?.sistema?.derived_proposal || data?.derived_proposal || []).forEach(ci=>{
+      const derived = (data && data.sistema && data.sistema.derived_proposal) ||
+                      data.derived_proposal || [];
+      derived.forEach(ci => {
         if (ci && ci.valido === false) {
-          invalids.push(`Circuito ${ci.idx} (${ci.tipo}) • ${String(ci.tipo_conexion||'').toUpperCase()} inválido para sistema ${sistema}.`);
+          invalids.push(
+            'Circuito ' + ci.idx + ' (' + ci.tipo + ') • ' +
+            String(ci.tipo_conexion || '').toUpperCase() +
+            ' inválido para sistema ' + sistema + '.'
+          );
         }
       });
 
       if (invalids.length) {
-        const msg = (sistema.includes('Mono'))
-          ? 'Sistema MONOFÁSICO: no puede conectar cargas BIFÁSICAS ni TRIFÁSICAS.'
-          : (sistema.includes('Bif'))
-            ? 'Sistema BIFÁSICO: no puede conectar cargas TRIFÁSICAS.'
-            : 'Tipos de conexión inválidos para el sistema.';
-        entryError.innerHTML = `<strong>${msg}</strong><br>${invalids.join('<br>')}`;
+        let msg;
+        if (sistema.indexOf('Mono') >= 0) {
+          msg = 'Sistema MONOFÁSICO: no puede conectar cargas BIFÁSICAS ni TRIFÁSICAS.';
+        } else if (sistema.indexOf('Bif') >= 0) {
+          msg = 'Sistema BIFÁSICO: no puede conectar cargas TRIFÁSICAS.';
+        } else {
+          msg = 'Tipos de conexión inválidos para el sistema.';
+        }
+        entryError.innerHTML = '<strong>' + msg + '</strong><br>' + invalids.join('<br>');
         entryError.classList.add('show');
 
-        // Bloquear todas las vistas y estados
         statusRight.textContent = 'Error'; statusRight.className = 'pill error';
         statusProp.textContent = '—'; statusBalance.textContent = '—';
         statusCalc.textContent = 'Error'; statusCalc.className = 'pill error';
@@ -658,10 +651,11 @@
         resumenEl.textContent = '—';
         structuredDiv.textContent = '—';
         sldContainer.textContent = '—';
-        btnDownloadSLD.disabled = true; btnDownloadSLDPNG.disabled = true;
-        return true; // bloqueado
+        btnDownloadSLD.disabled = true;
+        btnDownloadSLDPNG.disabled = true;
+        return true;
       }
-      return false; // no bloqueado
+      return false;
     }
 
     function collectPerCircuitLengths() {
@@ -670,34 +664,44 @@
       inputs.forEach(inp => {
         const m = inp.name.match(/^L_(focos|contactos|especiales|bombas|contactosEspecificos)_(\d+)$/);
         if (!m) return;
-        const key = m[1], idx = Number(m[2]);
+        const key = m[1];
+        const idx = Number(m[2]);
         L[key][idx] = Number(inp.value || 0);
       });
-      ['focos', 'contactos', 'especiales', 'bombas', 'contactosEspecificos'].forEach(k => L[k] = (L[k] || []).map(v => Number(v || 0)));
+      Object.keys(L).forEach(k => { L[k] = (L[k] || []).map(v => Number(v || 0)); });
       return L;
     }
+
     function collectPhaseAssignments() {
-      const sys = window.__lastData?.sistema || {};
-      const assign = (sys.phase_balance && Array.isArray(sys.phase_balance.assignment)) ? sys.phase_balance.assignment : [];
+      const sys = window.__lastData && window.__lastData.sistema || {};
+      const assign = (sys.phase_balance && Array.isArray(sys.phase_balance.assignment))
+        ? sys.phase_balance.assignment : [];
       return assign.map(row => {
-        const sel = document.querySelector(`select[name="phase_${row.id}"]`);
+        const sel = document.querySelector('select[name="phase_' + row.id + '"]');
         const fase = Number(sel ? sel.value : row.fase);
         return { id: row.id, fase };
       });
     }
+
     function calcDesb(totals) {
       const pos = (totals || []).filter(v => v > 0);
       if (!pos.length) return 0;
       const max = Math.max(...pos), min = Math.min(...pos);
       return max > 0 ? ((max - min) / max) * 100 : 0;
     }
+
     function previewTotals(assignments, sys) {
       const mapVA = {};
-      (sys.phase_balance?.assignment || []).forEach(a => mapVA[a.id] = a.VA);
+      (sys.phase_balance && sys.phase_balance.assignment || []).forEach(a => {
+        mapVA[a.id] = a.VA;
+      });
       if (Object.keys(mapVA).length === 0 && Array.isArray(sys.derived_proposal)) {
-        sys.derived_proposal.forEach(ci => mapVA[`${ci.key}_${ci.circuito_index}`] = ci.VA);
+        sys.derived_proposal.forEach(ci => {
+          mapVA[ci.key + '_' + ci.circuito_index] = ci.VA;
+        });
       }
-      const phaseCount = sys.phaseCount || (sys.sistema === 'Trifásico' ? 3 : (sys.sistema === 'Bifásico' ? 2 : 1));
+      const phaseCount = sys.phaseCount || (sys.sistema === 'Trifásico' ? 3 :
+                           (sys.sistema === 'Bifásico' ? 2 : 1));
       const totals = Array.from({ length: phaseCount }, () => 0);
       assignments.forEach(a => {
         const f = (a.fase >= 1 && a.fase <= phaseCount) ? a.fase : 1;
@@ -706,38 +710,44 @@
       return totals;
     }
 
-    /* ===== Core run ===== */
-    async function run(payload, opts = { showSummary: false }) {
-      // Reset UI/estado
+    async function run(payload, opts) {
+      opts = opts || { showSummary: false };
       entryError.classList.remove('show');
       entryError.textContent = '';
+
       statusRight.textContent = 'Procesando…'; statusRight.className = 'pill';
       statusProp.textContent = '—'; statusBalance.textContent = '—';
       statusCalc.textContent = opts.showSummary ? 'Calculando…' : 'Pendiente'; statusCalc.className = 'pill';
-      resumenEl.textContent = opts.showSummary ? 'Calculando…' : 'Modifica longitudes y pulsa “Recalcular…”';
+      resumenEl.textContent = opts.showSummary
+        ? 'Calculando…'
+        : 'Modifica longitudes y pulsa “Recalcular con longitudes”.';
       structuredDiv.textContent = opts.showSummary ? 'Calculando…' : 'Se mostrará tras recalcular.';
       structuredDiv.classList.add('muted');
       statusStruct.textContent = '—'; statusStruct.className = 'pill';
-      balanceSummary.textContent = 'Se mostrará cuando el sistema sea bifásico o trifásico.'; balanceSummary.classList.add('muted');
+      balanceSummary.textContent = 'Se mostrará cuando el sistema sea bifásico o trifásico.';
+      balanceSummary.classList.add('muted');
       balanceTableWrap.style.display = 'none'; btnApplyBalance.disabled = true; btnAutoBalance.disabled = true; balanceNotice.textContent = '';
       statusSLD.textContent = '—'; sldContainer.innerHTML = '—'; btnDownloadSLD.disabled = true; btnDownloadSLDPNG.disabled = true;
 
       try {
-        const res = await fetch('/api/v1/calculate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch('/api/v1/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
         const data = await res.json();
         window.__lastData = data;
         if (!data.ok) throw new Error(data.error || 'Error desconocido');
 
-        // BLOQUEO: si el sistema efectivo del backend (auto/recomendado/forzado) no admite alguno de los tipos elegidos, NO mostrar ninguna pestaña, solo alerta.
         const blocked = validateResultAndBlockUI(data, payload);
         if (blocked) {
-          // además activar tab "Propuesta" para que vea el mensaje y no confunda
           setActiveTab('proposal');
           return null;
         }
 
         statusRight.textContent = 'OK'; statusRight.className = 'pill ok';
-        renderProposal(data.sistema || {}); renderBalance(data);
+        renderProposal(data.sistema || {});
+        renderBalance(data);
 
         if (opts.showSummary) {
           statusCalc.textContent = 'OK'; statusCalc.className = 'pill ok';
@@ -745,7 +755,7 @@
           renderStructured(data);
           statusStruct.textContent = 'OK'; statusStruct.className = 'pill ok';
         } else {
-          statusCalc.textContent = 'Pendiente'; statusCalc.className = 'pill'; btnRecalc.disabled = false;
+          statusCalc.textContent = 'Pendiente'; statusCalc.className = 'pill';
         }
         if (panels.unifilar.classList.contains('active')) maybeGenerateSLD();
         return data;
@@ -759,47 +769,56 @@
       }
     }
 
-    /* ===== Render propuesta ===== */
     function renderProposal(s) {
       if (!s || !Array.isArray(s.derived_proposal) || !s.derived_proposal.length) {
         statusProp.textContent = '—';
         proposalDiv.innerHTML = 'No hay circuitos derivados.';
-        btnRecalc.disabled = true;
         return;
       }
       statusProp.textContent = 'OK'; statusProp.className = 'pill ok';
+
       const rows = s.derived_proposal.map(ci => {
-        const name = `L_${ci.key}_${ci.circuito_index}`;
-        const current = Number(ci.L_m ?? DEFAULT_L_DERIV);
-        const vdText = ci.vd_pct == null ? '—' : `${Number(ci.vd_pct).toFixed(2)} %`;
-        const itemsTxt = (ci.tipo === 'Contacto especial' || ci.tipo === 'Bomba' || ci.tipo === 'Contacto específico') ? '' : ` (${ci.items})`;
-        const tipoConn = ci.tipo_conexion ? ` • ${String(ci.tipo_conexion).toUpperCase()}` : '';
-        return `
-          <tr>
-            <td>${ci.idx}</td>
-            <td>${ci.tipo}${itemsTxt}${tipoConn}${ci.valido===false?' • INVÁLIDO':''}</td>
-            <td>${Math.round(ci.VA)} VA</td>
-            <td>${Number(ci.I).toFixed(2)} A</td>
-            <td>${ci.breaker || '—'} A / ${ci.cal || '—'}</td>
-            <td><input type="number" min="0" step=".1" value="${current}" style="width:90px" name="${name}" inputmode="decimal"></td>
-            <td>${vdText}</td>
-          </tr>
-        `;
+        const name = 'L_' + ci.key + '_' + ci.circuito_index;
+        const current = Number(ci.L_m != null ? ci.L_m : DEFAULT_L_DERIV);
+        const vdText = ci.vd_pct == null ? '—' : Number(ci.vd_pct).toFixed(2) + ' %';
+        const itemsTxt =
+          (ci.tipo === 'Contacto especial' || ci.tipo === 'Bomba' || ci.tipo === 'Contacto específico')
+            ? '' : ' (' + ci.items + ')';
+        const tipoConn = ci.tipo_conexion ? ' • ' + String(ci.tipo_conexion).toUpperCase() : '';
+        return (
+          '<tr>' +
+            '<td>' + ci.idx + '</td>' +
+            '<td>' + ci.tipo + itemsTxt + tipoConn + (ci.valido === false ? ' • INVÁLIDO' : '') + '</td>' +
+            '<td>' + Math.round(ci.VA) + ' VA</td>' +
+            '<td>' + Number(ci.I).toFixed(2) + ' A</td>' +
+            '<td>' + (ci.breaker || '—') + ' A / ' + (ci.cal || '—') + '</td>' +
+            '<td><input type="number" min="0" step=".1" value="' + current +
+              '" style="width:90px" name="' + name + '" inputmode="decimal"></td>' +
+            '<td>' + vdText + '</td>' +
+          '</tr>'
+        );
       }).join('');
-      proposalDiv.innerHTML = `
-        <div style="overflow:auto;">
-          <table>
-            <thead>
-              <tr><th>#</th><th>Circuito</th><th>VA</th><th>I</th><th>Protección/Calibre</th><th>Longitud (m)</th><th>VD actual</th></tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-        <div class="muted" style="margin-top:.4rem;">Ajusta longitudes y pulsa “Recalcular…”</div>
-      `;
+
+      proposalDiv.innerHTML =
+        '<div style="overflow:auto;">' +
+          '<table>' +
+            '<thead>' +
+              '<tr>' +
+                '<th>#</th><th>Circuito</th><th>VA</th><th>I</th>' +
+                '<th>Protección/Calibre</th><th>Longitud (m)</th><th>VD actual</th>' +
+              '</tr>' +
+            '</thead>' +
+            '<tbody>' + rows + '</tbody>' +
+          '</table>' +
+        '</div>' +
+        '<div class="muted" style="margin-top:.4rem;">Ajusta longitudes y pulsa “Recalcular con longitudes”.</div>' +
+        '<div id="proposal-actions" style="margin-top:.8rem; display:flex; justify-content:flex-end;"></div>';
+
+      const container = document.getElementById('proposal-actions');
+      container.innerHTML = '';
+      container.appendChild(btnRecalc);
     }
 
-    /* ===== Render balance ===== */
     function renderBalance(data) {
       const s = data.sistema || {};
       statusBalance.textContent = '—'; statusBalance.className = 'pill';
@@ -809,13 +828,34 @@
       if (!s.balanceEnabled || !s.phase_balance || (s.phaseCount || 1) <= 1) return;
 
       const totals = s.phase_balance.totals || [];
-      const fasesTxt = totals.map((v, i) => `F${i + 1}: ${Math.round(v)} VA`).join(' • ');
-      const desb = s.phase_balance.desbalance_pct != null ? Number(s.phase_balance.desbalance_pct).toFixed(2) : '—';
+      const fasesTxt = totals.map((v, i) => 'F' + (i + 1) + ': ' + Math.round(v) + ' VA').join(' • ');
+      const desb = s.phase_balance.desbalance_pct != null
+        ? Number(s.phase_balance.desbalance_pct).toFixed(2) : '—';
+
       statusBalance.textContent = 'OK'; statusBalance.className = 'pill ok';
-      balanceSummary.textContent = `• ${fasesTxt} • Desbalance: ${desb}% (lim ≤ 5.00%)`;
+      balanceSummary.textContent = '• ' + fasesTxt + ' • Desbalance: ' + desb + '% (lim ≤ 5.00%)';
       balanceSummary.classList.remove('muted');
 
-      renderBalanceTableFromAssignments(s.phase_balance.assignment, s.phaseCount || 2);
+      const sorted = (s.phase_balance.assignment || []).slice().sort(
+        (a, b) => (a.fase - b.fase) || ((a.idx || 0) - (b.idx || 0))
+      );
+      balanceTBody.innerHTML = sorted.map(row => {
+        const opts = Array.from({ length: s.phaseCount || 2 }, (_, i) =>
+          '<option value="' + (i + 1) + '"' + (row.fase === (i + 1) ? ' selected' : '') +
+          '>F' + (i + 1) + '</option>'
+        ).join('');
+        const tipoConn = row.tipo_conexion ? ' • ' + String(row.tipo_conexion).toUpperCase() : '';
+        return (
+          '<tr>' +
+            '<td>' + (row.idx || '—') + '</td>' +
+            '<td>' + row.key.toUpperCase() + (row.circuito_index + 1) + '</td>' +
+            '<td>' + row.tipo + tipoConn + '</td>' +
+            '<td>' + Math.round(row.VA) + ' VA</td>' +
+            '<td><select name="phase_' + row.id + '">' + opts + '</select></td>' +
+          '</tr>'
+        );
+      }).join('');
+
       balanceTableWrap.style.display = 'block';
       btnApplyBalance.disabled = false;
       btnAutoBalance.disabled = false;
@@ -824,86 +864,163 @@
         sel.addEventListener('change', onPhaseSelectChanged);
       });
     }
-    function renderBalanceTableFromAssignments(assignment, phaseCount) {
-      const sorted = [...assignment].sort((a, b) => (a.fase - b.fase) || ((a.idx || 0) - (b.idx || 0)));
-      balanceTBody.innerHTML = sorted.map(row => {
-        const opts = Array.from({ length: phaseCount }, (_, i) => `<option value="${i + 1}" ${row.fase === (i + 1) ? 'selected' : ''}>F${i + 1}</option>`).join('');
-        const tipoConn = row.tipo_conexion ? ` • ${String(row.tipo_conexion).toUpperCase()}` : '';
-        return `
-          <tr>
-            <td>${row.idx ?? '—'}</td>
-            <td>${row.key.toUpperCase()}${row.circuito_index + 1}</td>
-            <td>${row.tipo}${tipoConn}</td>
-            <td>${Math.round(row.VA)} VA</td>
-            <td><select name="phase_${row.id}">${opts}</select></td>
-          </tr>
-        `;
-      }).join('');
-    }
+
     function onPhaseSelectChanged() {
-      const sys = window.__lastData?.sistema;
+      const sys = window.__lastData && window.__lastData.sistema;
       if (!sys || !sys.phase_balance) return;
 
       const selected = collectPhaseAssignments();
       const totals = previewTotals(selected, sys);
       const desb = calcDesb(totals);
-      balanceSummary.textContent = `• ${totals.map((v, i) => `F${i + 1}: ${Math.round(v)} VA`).join(' • ')} • Desbalance: ${desb.toFixed(2)}% (lim ≤ 5.00%)`;
+
+      balanceSummary.textContent =
+        '• ' +
+        totals.map((v, i) => 'F' + (i + 1) + ': ' + Math.round(v) + ' VA').join(' • ') +
+        ' • Desbalance: ' + desb.toFixed(2) + '% (lim ≤ 5.00%)';
       balanceSummary.classList.remove('muted');
 
-      const meta = {}; sys.phase_balance.assignment.forEach(a => meta[a.id] = a);
-      const previewAssign = selected.map(sel => ({ ...(meta[sel.id] || {}), fase: sel.fase }));
-      renderBalanceTableFromAssignments(previewAssign, sys.phaseCount || 2);
-      balanceTBody.querySelectorAll('select[name^="phase_"]').forEach(sel => sel.addEventListener('change', onPhaseSelectChanged));
+      const meta = {};
+      sys.phase_balance.assignment.forEach(a => { meta[a.id] = a; });
+      const previewAssign = selected.map(sel => {
+        const base = meta[sel.id] || {};
+        return Object.assign({}, base, { fase: sel.fase });
+      });
+      const phaseCount = sys.phaseCount || 2;
+      balanceTBody.innerHTML = previewAssign.map(row => {
+        const opts = Array.from({ length: phaseCount }, (_, i) =>
+          '<option value="' + (i + 1) + '"' + (row.fase === (i + 1) ? ' selected' : '') +
+          '>F' + (i + 1) + '</option>'
+        ).join('');
+        const tipoConn = row.tipo_conexion ? ' • ' + String(row.tipo_conexion).toUpperCase() : '';
+        return (
+          '<tr>' +
+            '<td>' + (row.idx || '—') + '</td>' +
+            '<td>' + row.key.toUpperCase() + (row.circuito_index + 1) + '</td>' +
+            '<td>' + row.tipo + tipoConn + '</td>' +
+            '<td>' + Math.round(row.VA) + ' VA</td>' +
+            '<td><select name="phase_' + row.id + '">' + opts + '</select></td>' +
+          '</tr>'
+        );
+      }).join('');
 
-      balanceNotice.textContent = `PREVIEW • Desbalance: ${desb.toFixed(2)}%`;
+      balanceTBody.querySelectorAll('select[name^="phase_"]').forEach(sel => {
+        sel.addEventListener('change', onPhaseSelectChanged);
+      });
+
+      balanceNotice.textContent = 'PREVIEW • Desbalance: ' + desb.toFixed(2) + '%';
       balanceNotice.classList.remove('muted');
       balanceNotice.classList.toggle('warn', desb > 5);
     }
 
-    /* ===== Render estructurado ===== */
+    /* ==== Resumen estructurado (restaurado) ==== */
     function renderStructured(data) {
       const s = data.sistema || {};
       const div = structuredDiv;
+
       const fmt = {
         A: v => `${Number(v || 0).toFixed(2)} A`,
         VA: v => `${Math.round(v || 0)} VA`,
         pct: v => v == null ? '—' : `${Number(v).toFixed(2)} %`
       };
+
       const blocks = [];
-      blocks.push(section('General', `Folio: <strong>${data.folio}</strong><br>Sistema: ${s.sistema} (recomendado: ${s.recomendado})<br>Demanda: ${fmt.VA(s.VA_demanda_total)} – Instalada: ${fmt.VA(s.VA_instalada_total)}<br>kW: ${Number(s.kW || 0).toFixed(3)}`));
-      blocks.push(section('Alimentador', `I=${fmt.A(s.I_alim)}<br>Conductor: ${s.cal_alim} | Interruptor: ${s.proteccion} A<br>VD: ${fmt.pct(s.vd_alim)} • Longitud: ${s.largo_alim_m} m`));
+
+      // General
+      blocks.push(section(
+        'General',
+        `Folio: <strong>${data.folio}</strong><br>` +
+        `Sistema: ${s.sistema} (recomendado: ${s.recomendado})<br>` +
+        `Demanda: ${fmt.VA(s.VA_demanda_total)} – Instalada: ${fmt.VA(s.VA_instalada_total)}<br>` +
+        `kW: ${Number(s.kW || 0).toFixed(3)}`
+      ));
+
+      // Alimentador
+      blocks.push(section(
+        'Alimentador',
+        `I=${fmt.A(s.I_alim)}<br>` +
+        `Conductor: ${s.cal_alim} | Interruptor: ${s.proteccion} A<br>` +
+        `VD: ${fmt.pct(s.vd_alim)} • Longitud: ${s.largo_alim_m} m`
+      ));
+
+      // Luminarias
       if (s.nFocos > 0) {
         const VA_circ = (s.VA_focos || 0) / s.nFocos;
-        blocks.push(section('Luminarias', `Circuitos: ${s.nFocos} • VA/circuito: ${fmt.VA(VA_circ)}<br>Breaker: ${s.int_focos} A • Conductor: ${s.cal_focos || '—'}`));
+        blocks.push(section(
+          'Luminarias',
+          `Circuitos: ${s.nFocos} • VA/circuito: ${fmt.VA(VA_circ)}<br>` +
+          `Breaker: ${s.int_focos} A • Conductor: ${s.cal_focos || '—'}`
+        ));
       }
+
+      // Contactos
       if (s.nContactos > 0) {
         const VA_circ = (s.VA_contactos || 0) / s.nContactos;
-        blocks.push(section('Contactos', `Circuitos: ${s.nContactos} • VA/circuito: ${fmt.VA(VA_circ)}<br>Breaker: ${s.int_contactos} A • Conductor: ${s.cal_cont || '—'}`));
+        blocks.push(section(
+          'Contactos',
+          `Circuitos: ${s.nContactos} • VA/circuito: ${fmt.VA(VA_circ)}<br>` +
+          `Breaker: ${s.int_contactos} A • Conductor: ${s.cal_cont || '—'}`
+        ));
       }
+
+      // Especiales
       if (s.nContactosEspeciales > 0) {
-        blocks.push(section('Especiales', `Cantidad: ${s.nContactosEspeciales} • I≈${fmt.A(s.I_circ_especial)}<br>Breaker: ${s.int_contactos_especiales} A • Conductor: ${s.cal_especial || '—'}`));
+        blocks.push(section(
+          'Especiales',
+          `Cantidad: ${s.nContactosEspeciales} • I≈${fmt.A(s.I_circ_especial)}<br>` +
+          `Breaker: ${s.int_contactos_especiales} A • Conductor: ${s.cal_especial || '—'}`
+        ));
       }
+
+      // Bombas
       if (s.nBombas > 0) {
-        const list = (s.I_bomba_list || []).map((I, i) => `Bomba ${i + 1}: ${fmt.A(I)} • ${s.bombas_tipos_list?.[i]?.toUpperCase() || 'MONO'} • Breaker ${s.int_bomba_list[i]}A • Conductor ${s.cal_bomba_list[i] || '—'}`).join('<br>');
+        const list = (s.I_bomba_list || []).map((I, i) => {
+          const tipo = s.bombas_tipos_list?.[i]?.toUpperCase() || 'MONO';
+          const br = s.int_bomba_list?.[i];
+          const cal = s.cal_bomba_list?.[i] || '—';
+          return `Bomba ${i + 1}: ${fmt.A(I)} • ${tipo} • Breaker ${br}A • Conductor ${cal}`;
+        }).join('<br>');
         blocks.push(section('Bombas', list));
       }
+
+      // Contactos específicos
       if (s.nContactosEspecificos > 0) {
-        const list = (s.contactosEspecificos_detalle || []).map((d, i) => `Contacto específico ${i + 1}: ${fmt.VA(d.VA)} – ${fmt.A(d.I)} – ${d.tipo_conexion?.toUpperCase() || 'MONO'} – ${d.breaker}A – ${d.cal}`).join('<br>');
+        const list = (s.contactosEspecificos_detalle || []).map((d, i) => {
+          const tipo = d.tipo_conexion?.toUpperCase() || 'MONO';
+          return `Contacto específico ${i + 1}: ${fmt.VA(d.VA)} – ${fmt.A(d.I)} – ` +
+                 `${tipo} – ${d.breaker}A – ${d.cal}`;
+        }).join('<br>');
         blocks.push(section('Contactos específicos', list));
       }
+
+      // Balance
       if (s.balanceEnabled && s.phase_balance && s.phaseCount > 1) {
-        const fasesTxt = (s.phase_balance.totals || []).map((v, i) => `F${i + 1}: ${fmt.VA(v)}`).join(' • ');
-        blocks.push(section('Balance', `${fasesTxt}<br>Desbalance: ${fmt.pct(s.phase_balance.desbalance_pct)} (≤5%)`));
+        const fasesTxt = (s.phase_balance.totals || [])
+          .map((v, i) => `F${i + 1}: ${fmt.VA(v)}`)
+          .join(' • ');
+        blocks.push(section(
+          'Balance',
+          `${fasesTxt}<br>` +
+          `Desbalance: ${fmt.pct(s.phase_balance.desbalance_pct)} (≤5%)`
+        ));
       }
+
       div.innerHTML = blocks.join('');
       div.classList.remove('muted');
 
-      function section(t, inner) {
-        return `<div style="margin-bottom:1rem;"><div style="font-weight:700;margin:.2rem 0 .4rem;color:#cbd5e1;font-size:1rem;">${t}</div><div style="font-size:.82rem;line-height:1.2rem;">${inner}</div></div>`;
+      function section(titulo, contenidoHtml) {
+        return `
+          <div style="margin-bottom:1rem;">
+            <div style="font-weight:700;margin:.2rem 0 .4rem;color:#cbd5e1;font-size:1rem;">
+              ${titulo}
+            </div>
+            <div style="font-size:.82rem;line-height:1.2rem;">
+              ${contenidoHtml}
+            </div>
+          </div>
+        `;
       }
     }
 
-    /* ===== Unifilar ===== */
     function makeSVGResponsive(svg) {
       if (!svg) return;
       svg.removeAttribute('width');
@@ -911,7 +1028,7 @@
       if (!svg.getAttribute('viewBox')) {
         const w = svg.width.baseVal.value || 1200;
         const h = svg.height.baseVal.value || 600;
-        svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
       }
       svg.setAttribute('preserveAspectRatio', 'xMinYMin meet');
       svg.style.width = '100%';
@@ -919,7 +1036,7 @@
     }
 
     function maybeGenerateSLD() {
-      const s = window.__lastData?.sistema;
+      const s = window.__lastData && window.__lastData.sistema;
       if (!s) {
         statusSLD.textContent = '—';
         sldContainer.textContent = 'Genera un cálculo para visualizar.';
@@ -938,36 +1055,14 @@
         sldContainer.textContent = 'No fue posible generar el unifilar.';
       }
     }
+
     btnGenSLD.addEventListener('click', () => maybeGenerateSLD());
     btnFitWidth.addEventListener('click', () => {
       const svg = sldContainer.querySelector('svg');
       makeSVGResponsive(svg);
       sldContainer.scrollLeft = 0;
     });
-    btnDownloadSLD.addEventListener('click', () => {
-      const svg = sldContainer.querySelector('svg'); if (!svg) return;
-      const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'unifilar.svg'; a.click();
-    });
-    btnDownloadSLDPNG.addEventListener('click', () => {
-      const svg = sldContainer.querySelector('svg'); if (!svg) return;
-      const svgStr = new XMLSerializer().serializeToString(svg);
-      const img = new Image();
-      const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(blob);
-      img.onload = function () {
-        const vb = svg.viewBox.baseVal; const w = vb && vb.width ? vb.width : 1600; const h = vb && vb.height ? vb.height : 900;
-        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h); ctx.drawImage(img, 0, 0, w, h);
-        URL.revokeObjectURL(url);
-        canvas.toBlob(b => {
-          const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'unifilar.png'; a.click();
-        }, 'image/png', 0.92);
-      };
-      img.src = url;
-    });
 
-    /* ===== Eventos cálculo ===== */
     btnCalc.addEventListener('click', () => {
       if (!validateTypesAgainstSystem()) {
         setActiveTab('proposal');
@@ -984,15 +1079,6 @@
       inpCspCant.value = 3; inpCspCant.dispatchEvent(new Event('input'));
       inpCspW.value = '800, 1200, 600'; inpCspW.dispatchEvent(new Event('input'));
       renderBombasRepeater(); renderCspRepeater(); enforceSelectorsBySystem();
-      const bombaSels = bombasRepeater.querySelectorAll('select[name^="BombaTipo_"]');
-      if (bombaSels[0]) bombaSels[0].value = 'mono';
-      if (bombaSels[1]) bombaSels[1].value = 'bifa';
-      if (bombaSels[2]) bombaSels[2].value = 'trifa';
-      const cspSels = cspRepeater.querySelectorAll('select[name^="CspTipo_"]');
-      if (cspSels[0]) cspSels[0].value = 'mono';
-      if (cspSels[1]) cspSels[1].value = 'bifa';
-      if (cspSels[2]) cspSels[2].value = 'trifa';
-
       entryError.classList.remove('show');
       run(gatherBasePayload(), { showSummary: false });
     });
@@ -1005,13 +1091,13 @@
       setActiveTab('proposal');
       const base = gatherBasePayload();
       const L = collectPerCircuitLengths();
-      const payload = { ...base,
+      const payload = Object.assign({}, base, {
         L_focos: L.focos,
         L_contactos: L.contactos,
         L_especiales: L.especiales,
         L_bombas: L.bombas,
         L_contactosEspecificos: L.contactosEspecificos
-      };
+      });
       await run(payload, { showSummary: true });
     });
 
@@ -1020,23 +1106,25 @@
         setActiveTab('proposal');
         return;
       }
-      const sys = window.__lastData?.sistema;
+      const sys = window.__lastData && window.__lastData.sistema;
       if (!sys || !sys.phase_balance) return;
       const selected = collectPhaseAssignments();
-      const base = gatherBasePayload(); const L = collectPerCircuitLengths();
-      const payload = { ...base,
+      const base = gatherBasePayload();
+      const L = collectPerCircuitLengths();
+      const payload = Object.assign({}, base, {
         L_focos: L.focos,
         L_contactos: L.contactos,
         L_especiales: L.especiales,
         L_bombas: L.bombas,
         L_contactosEspecificos: L.contactosEspecificos,
         PhaseAssignments: selected
-      };
+      });
       const data = await run(payload, { showSummary: true });
       if (!data || !data.sistema || !data.sistema.phase_balance) return;
       const desb = data.sistema.phase_balance.desbalance_pct;
-      balanceNotice.textContent = `Balance aplicado. Desbalance definitivo: ${desb.toFixed(2)}%`;
-      balanceNotice.classList.remove('muted'); balanceNotice.classList.toggle('warn', desb > 5);
+      balanceNotice.textContent = 'Balance aplicado. Desbalance definitivo: ' + desb.toFixed(2) + '%';
+      balanceNotice.classList.remove('muted');
+      balanceNotice.classList.toggle('warn', desb > 5);
       setActiveTab('balance');
     });
 
@@ -1045,19 +1133,21 @@
         setActiveTab('proposal');
         return;
       }
-      const base = gatherBasePayload(); const L = collectPerCircuitLengths();
-      const payload = { ...base,
+      const base = gatherBasePayload();
+      const L = collectPerCircuitLengths();
+      const payload = Object.assign({}, base, {
         L_focos: L.focos,
         L_contactos: L.contactos,
         L_especiales: L.especiales,
         L_bombas: L.bombas,
         L_contactosEspecificos: L.contactosEspecificos
-      };
+      });
       const data = await run(payload, { showSummary: true });
       if (!data || !data.sistema || !data.sistema.phase_balance) return;
       const desb = data.sistema.phase_balance.desbalance_pct;
-      balanceNotice.textContent = `Balance automático aplicado. Desbalance: ${desb.toFixed(2)}%`;
-      balanceNotice.classList.remove('muted'); balanceNotice.classList.toggle('warn', desb > 5);
+      balanceNotice.textContent = 'Balance automático aplicado. Desbalance: ' + desb.toFixed(2) + '%';
+      balanceNotice.classList.remove('muted');
+      balanceNotice.classList.toggle('warn', desb > 5);
       setActiveTab('balance');
     });
 
@@ -1065,7 +1155,7 @@
       if (!resumenEl.textContent || resumenEl.textContent === '—') return;
       navigator.clipboard.writeText(resumenEl.textContent).then(() => {
         btnCopy.textContent = 'Copiado!';
-        setTimeout(() => btnCopy.textContent = 'Copiar resumen', 1400);
+        setTimeout(() => { btnCopy.textContent = 'Copiar resumen'; }, 1400);
       });
     });
   </script>

@@ -1,16 +1,10 @@
 'use strict';
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
-// RESOLVER calc.js con ruta absoluta + log de verificación
-const calcPath = path.join(__dirname, 'backend', 'lib', 'calc.js');
-console.log('[BOOT] __dirname =', __dirname);
-console.log('[BOOT] Looking for calc at:', calcPath, 'exists:', fs.existsSync(calcPath));
-
-const { calcularSistema, resumenLevantamiento } = require(calcPath);
+const { calcularSistema, resumenLevantamiento } = require('./backend/lib/calc');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -35,32 +29,21 @@ app.use('/api/', rateLimit({
   legacyHeaders: false
 }));
 
-// Endpoint de cálculo – incorpora "Contactos específicos"
 app.post('/api/v1/calculate', (req, res) => {
   try {
     const payload = req.body || {};
     const forcedMode = String(payload.forcedMode || 'auto');
-
-    // Log breve para diagnóstico
-    console.log('[CALC] Payload keys:', Object.keys(payload));
-
     const sistemaObj = calcularSistema(payload, forcedMode);
-
-    // Pasamos también los campos nuevos al resumen (aunque el resumen usa s.sistema)
     const resumen = resumenLevantamiento(
       sistemaObj.folio,
       {
         Focos: payload.Focos,
         Contactos: payload.Contactos,
         Bombas: payload.Bombas,
-        ContactosEspeciales: payload.ContactosEspeciales,
-        // NUEVO: contactos específicos en entradas (informativo)
-        ContactosEspecificos_Cant: payload.ContactosEspecificos_Cant,
-        ContactosEspecificos_W_List: payload.ContactosEspecificos_W_List
+        ContactosEspeciales: payload.ContactosEspeciales
       },
       sistemaObj
     );
-
     res.json({ ok: true, sistema: sistemaObj, resumen });
   } catch (err) {
     console.error('Error en /api/v1/calculate', err);
